@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 const translations = {
   ar: {
     appName: 'شوب إيزي',
+    Louable: 'لوابل',
     featuredProducts: 'المنتجات المميزة',
     addToCart: 'أضف إلى السلة',
     cart: 'السلة',
@@ -24,10 +25,22 @@ const translations = {
     flavors: 'النكهات',
     description: 'الوصف',
     backToProducts: 'العودة إلى المنتجات',
-    goToCart: 'الذهاب إلى السلة'
+    goToCart: 'الذهاب إلى السلة',
+    // Footer translations
+    footerTagline: 'صناعة الشوكولاتة الفاخرة بشغف وتميز. كل قطعة تحكي قصة من الجودة والمذاق الرائع.',
+    quickLinks: 'روابط سريعة',
+    home: 'الرئيسية',
+    products: 'المنتجات',
+    aboutUs: 'من نحن',
+    contact: 'اتصل بنا',
+    contactUs: 'تواصل معنا',
+    followUs: 'تابعنا',
+    allRightsReserved: 'جميع الحقوق محفوظة',
+    handcraftedWith: 'صنع بحب'
   },
   en: {
     appName: 'ShopEasy',
+    Louable: 'Louable',
     featuredProducts: 'Featured Products',
     addToCart: 'Add to Cart',
     cart: 'Cart',
@@ -47,7 +60,18 @@ const translations = {
     flavors: 'Flavors',
     description: 'Description',
     backToProducts: 'Back to Products',
-    goToCart: 'Go to Cart'
+    goToCart: 'Go to Cart',
+    // Footer translations
+    footerTagline: 'Crafting premium chocolates with passion and excellence. Every piece tells a story of quality and taste.',
+    quickLinks: 'Quick Links',
+    home: 'Home',
+    products: 'Products',
+    aboutUs: 'About Us',
+    contact: 'Contact',
+    contactUs: 'Contact Us',
+    followUs: 'Follow Us',
+    allRightsReserved: 'All rights reserved',
+    handcraftedWith: 'Handcrafted with'
   }
 }
 
