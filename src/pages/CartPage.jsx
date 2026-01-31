@@ -703,11 +703,9 @@ const handleCheckout = async () => {
           </div>
 
           <button
-            onClick={handleCheckout}
-            
+            onClick={() => alert('Checkout not implemented yet')}
             style={{
               width: '100%',
-              
               padding: isMobile ? '14px' : 'clamp(14px, 3.5vw, 20px)',
               background: `linear-gradient(135deg, ${c.success} 0%, #7CB342 100%)`,
               color: 'white',
