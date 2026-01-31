@@ -36,7 +36,16 @@ const translations = {
     contactUs: 'تواصل معنا',
     followUs: 'تابعنا',
     allRightsReserved: 'جميع الحقوق محفوظة',
-    handcraftedWith: 'صنع بحب'
+    handcraftedWith: 'صنع بحب',
+    aboutUs: 'من نحن',
+    aboutUsTitle: 'من نحن',
+    ourMission: 'مهمتنا',
+    missionDescription: 'في لوابل، نحن ملتزمون بتقديم أفضل أنواع الشوكولاتة الفاخرة المصنوعة يدويًا من أجود مكونات الكاكاو. نجمع بين التقاليد القديمة والابتكار الحديث لخلق تجارب لا تُنسى.',
+    ourVision: 'رؤيتنا',
+    visionDescription: 'أن نكون العلامة التجارية الرائدة للشوكولاتة الفاخرة في الشرق الأوسط، مع الحفاظ على أعلى معايير الجودة والاستدامة.',
+    ourValues: 'قيمنا',
+    valuesDescription: 'الجودة، الأصالة، الابتكار، والاستدامة هي قيمنا الأساسية التي نبني عليها كل ما نقوم به.',
+    backToHome: 'العودة إلى الرئيسية'
   },
   en: {
     appName: 'ShopEasy',
@@ -71,7 +80,16 @@ const translations = {
     contactUs: 'Contact Us',
     followUs: 'Follow Us',
     allRightsReserved: 'All rights reserved',
-    handcraftedWith: 'Handcrafted with'
+    handcraftedWith: 'Handcrafted with',
+    aboutUs: 'About Us',
+    aboutUsTitle: 'About Us',
+    ourMission: 'Our Mission',
+    missionDescription: 'At Louable, we are committed to crafting premium artisanal chocolates using the finest cocoa ingredients. We blend time-honored traditions with modern innovation to create unforgettable experiences.',
+    ourVision: 'Our Vision',
+    visionDescription: 'To become the leading luxury chocolate brand in the Middle East, while maintaining the highest standards of quality and sustainability.',
+    ourValues: 'Our Values',
+    valuesDescription: 'Quality, authenticity, innovation, and sustainability are our core values that guide everything we do.',
+    backToHome: 'Back to Home'
   }
 }
 

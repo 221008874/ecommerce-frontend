@@ -1,4 +1,5 @@
-// src/pages/Home.jsx
+// src/pages/Home_RESPONSIVE.jsx
+// Enhanced version with improved responsive design
 import { useEffect, useState } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useCart } from '../context/CartContext'
@@ -12,12 +13,14 @@ import facebookIcon from '../assets/facebook.png'
 import instagramIcon from '../assets/instagram.png'
 import twitterIcon from '../assets/twitter.png'
 import whatsappIcon from '../assets/whatsapp.png'
+
 export default function Home() {
   const { toggleTheme, theme, getImage } = useTheme()
   const { totalItems } = useCart()
   const { t, lang, toggleLanguage } = useLanguage()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024)
 
   const colors = {
     light: {
@@ -41,6 +44,17 @@ export default function Home() {
   }
 
   const c = theme === 'light' ? colors.light : colors.dark
+
+  // Responsive breakpoints
+  const isMobile = windowWidth < 768
+  const isTablet = windowWidth >= 768 && windowWidth < 1024
+  const isSmallMobile = windowWidth < 480
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -66,15 +80,46 @@ export default function Home() {
         style={{
           minHeight: '100vh',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           background: c.background,
           color: c.textDark,
           fontSize: '1.25rem',
-          fontFamily: 'Georgia, serif'
+          fontFamily: 'Georgia, serif',
+          gap: '24px',
+          padding: '20px'
         }}
       >
-        Loading premium chocolates...
+        <div style={{
+          width: '80px',
+          height: '80px',
+          position: 'relative'
+        }}>
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            border: '6px solid rgba(212, 160, 23, 0.2)',
+            borderRadius: '50%'
+          }}></div>
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            border: '6px solid transparent',
+            borderTopColor: '#D4A017',
+            borderRightColor: '#D4A017',
+            borderRadius: '50%',
+            animation: 'spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite'
+          }}></div>
+        </div>
+        <p style={{ fontWeight: '600', letterSpacing: '1px', textAlign: 'center' }}>
+          Loading premium chocolates...
+        </p>
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     )
   }
@@ -86,9 +131,10 @@ export default function Home() {
         style={{
           position: 'relative',
           width: '100%',
-          height: '70vh',
-          minHeight: '500px',
-          maxHeight: '700px',
+          // IMPROVED: Better mobile hero height
+          height: isMobile ? 'clamp(600px, 90vh, 750px)' : '75vh',
+          minHeight: isMobile ? '600px' : '850px',
+          maxHeight: isMobile ? '750px' : '950px',
           overflow: 'hidden',
           background: c.card
         }}
@@ -102,131 +148,156 @@ export default function Home() {
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
-            filter: theme === 'dark' ? 'brightness(0.7)' : 'brightness(0.9)',
-            transition: 'filter 0.3s ease'
+            filter: theme === 'dark' ? 'brightness(0.75)' : 'brightness(0.9)',
+            transition: 'filter 0.3s ease',
+            animation: isMobile ? 'none' : 'kenBurns 20s ease-in-out infinite alternate'
           }}
         />
 
-        {/* Overlay for text readability */}
+        {/* Enhanced Overlay */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
             background: theme === 'light' 
-              ? 'linear-gradient(to bottom, rgba(248,244,240,0.2), rgba(62,39,35,0.5))' 
-              : 'linear-gradient(to bottom, rgba(26,20,18,0.3), rgba(46,27,27,0.6))',
+              ? 'linear-gradient(to bottom, rgba(248,244,240,0.1), rgba(62,39,35,0.6))' 
+              : 'linear-gradient(to bottom, rgba(26,20,18,0.2), rgba(46,27,27,0.7))',
             transition: 'background 0.3s ease'
           }}
         />
 
-        {/* TOP CONTROLS - Positioned at top corners */}
+        {/* Decorative elements - Hidden on small mobile */}
+        {!isSmallMobile && (
+          <>
+            <div style={{
+              position: 'absolute',
+              top: '10%',
+              right: '5%',
+              fontSize: '2rem',
+              opacity: 0.3,
+              animation: 'float 4s ease-in-out infinite'
+            }}>🍫</div>
+            <div style={{
+              position: 'absolute',
+              bottom: '15%',
+              left: '8%',
+              fontSize: '1.5rem',
+              opacity: 0.25,
+              animation: 'float 5s ease-in-out infinite 1s'
+            }}>✨</div>
+          </>
+        )}
+
+        {/* TOP CONTROLS */}
         <div
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
-            padding: '1.5rem 2rem',
+            padding: isMobile ? '1rem' : 'clamp(1rem, 3vw, 1.5rem) clamp(1.5rem, 4vw, 2rem)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            zIndex: 10
+            zIndex: 10,
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.3), transparent)',
+            backdropFilter: 'blur(5px)',
+            // IMPROVED: Better mobile spacing
+            gap: '0.5rem'
           }}
         >
-          {/* Left Side - Language Toggle */}
+          {/* Language Toggle */}
           <button
             onClick={toggleLanguage}
             style={{
-              background: 'rgba(255, 255, 255, 0.15)',
-              backdropFilter: 'blur(10px)',
-              WebkitBackdropFilter: 'blur(10px)',
-              border: `2px solid rgba(255, 255, 255, 0.3)`,
-              borderRadius: '24px',
-              padding: '0.6rem 1.2rem',
+              background: 'rgba(255, 255, 255, 0.2)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: `2px solid rgba(255, 255, 255, 0.4)`,
+              borderRadius: '30px',
+              padding: isMobile ? '0.6rem 1rem' : 'clamp(0.6rem, 2vw, 0.8rem) clamp(1.2rem, 3vw, 1.5rem)',
               cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: '600',
-              transition: 'all 0.3s ease',
+              fontSize: isMobile ? '0.85rem' : 'clamp(0.9rem, 2.5vw, 1rem)',
+              fontWeight: '700',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               color: '#FFFFFF',
               fontFamily: 'system-ui, -apple-system, sans-serif',
-              minWidth: '70px',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-              textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)'
+              minWidth: isMobile ? '60px' : '75px',
+              boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)',
+              textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
             }}
             onMouseEnter={(e) => {
-              if (window.innerWidth >= 768) {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'
-                e.currentTarget.style.transform = 'scale(1.05)'
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.25)'
+              if (windowWidth >= 768) {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'
+                e.currentTarget.style.transform = 'scale(1.08) translateY(-2px)'
+                e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.3)'
               }
             }}
             onMouseLeave={(e) => {
-              if (window.innerWidth >= 768) {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'
-                e.currentTarget.style.transform = 'scale(1)'
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)'
+              if (windowWidth >= 768) {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
+                e.currentTarget.style.transform = 'scale(1) translateY(0)'
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.2)'
               }
             }}
             onTouchStart={(e) => {
-              e.currentTarget.style.opacity = '0.8'
+              e.currentTarget.style.transform = 'scale(0.95)'
             }}
             onTouchEnd={(e) => {
-              e.currentTarget.style.opacity = '1'
+              e.currentTarget.style.transform = 'scale(1)'
             }}
-            aria-label={`Switch to ${lang === 'ar' ? 'English' : 'العربية'}`}
           >
             {lang === 'ar' ? 'EN' : 'AR'}
           </button>
 
-          {/* Right Side - Theme Toggle & Cart */}
+          {/* Right Side Controls */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.75rem'
+              gap: isMobile ? '0.5rem' : 'clamp(0.6rem, 2vw, 0.9rem)'
             }}
           >
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
               style={{
-                background: 'rgba(255, 255, 255, 0.15)',
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
-                border: `2px solid rgba(255, 255, 255, 0.3)`,
+                background: 'rgba(255, 255, 255, 0.2)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: `2px solid rgba(255, 255, 255, 0.4)`,
                 borderRadius: '50%',
-                width: '52px',
-                height: '52px',
+                width: isMobile ? '48px' : 'clamp(50px, 12vw, 58px)',
+                height: isMobile ? '48px' : 'clamp(50px, 12vw, 58px)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                fontSize: '1.5rem',
-                transition: 'all 0.3s ease',
+                fontSize: isMobile ? '1.3rem' : 'clamp(1.4rem, 4vw, 1.6rem)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 color: '#FFFFFF',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)'
               }}
               onMouseEnter={(e) => {
-                if (window.innerWidth >= 768) {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'
-                  e.currentTarget.style.transform = 'scale(1.05) rotate(15deg)'
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.25)'
+                if (windowWidth >= 768) {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'
+                  e.currentTarget.style.transform = 'scale(1.1) rotate(20deg)'
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.3)'
                 }
               }}
               onMouseLeave={(e) => {
-                if (window.innerWidth >= 768) {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'
+                if (windowWidth >= 768) {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
                   e.currentTarget.style.transform = 'scale(1) rotate(0deg)'
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)'
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.2)'
                 }
               }}
               onTouchStart={(e) => {
-                e.currentTarget.style.opacity = '0.8'
+                e.currentTarget.style.transform = 'scale(0.9)'
               }}
               onTouchEnd={(e) => {
-                e.currentTarget.style.opacity = '1'
+                e.currentTarget.style.transform = 'scale(1)'
               }}
-              aria-label={theme === 'light' ? t('darkMode') : t('lightMode')}
             >
               {theme === 'light' ? '🌙' : '☀️'}
             </button>
@@ -236,64 +307,64 @@ export default function Home() {
               to="/cart"
               style={{
                 position: 'relative',
-                background: 'rgba(255, 255, 255, 0.15)',
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
-                border: `2px solid rgba(255, 255, 255, 0.3)`,
+                background: 'rgba(255, 255, 255, 0.2)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: `2px solid rgba(255, 255, 255, 0.4)`,
                 borderRadius: '50%',
-                width: '52px',
-                height: '52px',
+                width: isMobile ? '48px' : 'clamp(50px, 12vw, 58px)',
+                height: isMobile ? '48px' : 'clamp(50px, 12vw, 58px)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                fontSize: '1.5rem',
-                transition: 'all 0.3s ease',
+                fontSize: isMobile ? '1.3rem' : 'clamp(1.4rem, 4vw, 1.6rem)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 textDecoration: 'none',
                 color: '#FFFFFF',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)'
               }}
               onMouseEnter={(e) => {
-                if (window.innerWidth >= 768) {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'
-                  e.currentTarget.style.transform = 'scale(1.05)'
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.25)'
+                if (windowWidth >= 768) {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'
+                  e.currentTarget.style.transform = 'scale(1.1) translateY(-2px)'
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.3)'
                 }
               }}
               onMouseLeave={(e) => {
-                if (window.innerWidth >= 768) {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'
-                  e.currentTarget.style.transform = 'scale(1)'
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)'
+                if (windowWidth >= 768) {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
+                  e.currentTarget.style.transform = 'scale(1) translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.2)'
                 }
               }}
               onTouchStart={(e) => {
-                e.currentTarget.style.opacity = '0.8'
+                e.currentTarget.style.transform = 'scale(0.9)'
               }}
               onTouchEnd={(e) => {
-                e.currentTarget.style.opacity = '1'
+                e.currentTarget.style.transform = 'scale(1)'
               }}
-              aria-label={t('cart')}
             >
               🛒
               {totalItems > 0 && (
                 <span
                   style={{
                     position: 'absolute',
-                    top: '-6px',
-                    right: '-6px',
-                    background: '#DC2626',
+                    top: '-8px',
+                    right: '-8px',
+                    background: 'linear-gradient(135deg, #FF3B3B, #DC2626)',
                     color: '#fff',
                     borderRadius: '50%',
-                    width: '26px',
-                    height: '26px',
+                    width: isMobile ? '22px' : 'clamp(24px, 6vw, 28px)',
+                    height: isMobile ? '22px' : 'clamp(24px, 6vw, 28px)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '0.75rem',
+                    fontSize: isMobile ? '0.65rem' : 'clamp(0.7rem, 2vw, 0.8rem)',
                     fontWeight: 'bold',
-                    border: `2px solid #FFFFFF`,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                    border: `3px solid #FFFFFF`,
+                    boxShadow: '0 4px 12px rgba(220, 38, 38, 0.5)',
+                    animation: 'cartBadgePulse 2s ease-in-out infinite'
                   }}
                 >
                   {totalItems}
@@ -303,7 +374,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* CENTERED LOGO & HERO CONTENT */}
+        {/* CENTERED HERO CONTENT */}
         <div
           style={{
             position: 'relative',
@@ -311,82 +382,119 @@ export default function Home() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '2rem',
+            padding: isMobile ? '1.5rem 1rem' : 'clamp(2rem, 5vw, 3rem)',
             textAlign: 'center',
             zIndex: 1
           }}
         >
           <div
             style={{
-              maxWidth: '900px',
+              maxWidth: '1000px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 'clamp(1rem, 3vh, 2rem)'
+              gap: isMobile ? '1rem' : 'clamp(1.2rem, 3.5vh, 2.5rem)'
             }}
           >
-            {/* Logo Image - Centered */}
+            {/* Logo with enhanced effects */}
             <div 
               style={{
+                marginTop: 0,
                 width: '100%',
                 display: 'flex',
                 justifyContent: 'center',
-                animation: 'fadeInScale 1s ease-out'
+                animation: 'fadeInScale 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                position: 'relative'
               }}
             >
-              <img 
-                src={getImage('logo')} 
-                alt="Louable Logo" 
-                style={{ 
-                  height: 'clamp(120px, 25vh, 250px)',
-                  width: 'auto',
-                  maxWidth: '90%',
-                  objectFit: 'contain',
-                  filter: theme === 'dark' 
-                    ? 'drop-shadow(0 8px 16px rgba(0,0,0,0.6)) brightness(1.1)' 
-                    : 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))',
-                  transition: 'all 0.3s ease'
-                }} 
-                onMouseEnter={(e) => {
-                  if (window.innerWidth >= 768) {
-                    e.currentTarget.style.transform = 'scale(1.05)'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (window.innerWidth >= 768) {
-                    e.currentTarget.style.transform = 'scale(1)'
-                  }
-                }}
-              />
+              <div style={{
+                position: 'relative',
+                filter: 'drop-shadow(0 12px 24px rgba(0,0,0,0.4))'
+              }}>
+                <img 
+                  src={getImage('logo')} 
+                  alt="Louable Logo" 
+                  style={{ 
+                    // IMPROVED: Better mobile logo sizing
+                    height: isMobile ? 'clamp(120px, 22vh, 200px)' : 'clamp(140px, 28vh, 280px)',
+                    width: 'auto',
+                    maxWidth: '90%',
+                    objectFit: 'contain',
+                    filter: theme === 'dark' 
+                      ? 'brightness(1.15) contrast(1.1)' 
+                      : 'brightness(1.05)',
+                    transition: 'all 0.4s ease',
+                    animation: isMobile ? 'none' : 'floatGentle 5s ease-in-out infinite'
+                  }} 
+                  onMouseEnter={(e) => {
+                    if (windowWidth >= 768) {
+                      e.currentTarget.style.transform = 'scale(1.08) rotate(2deg)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (windowWidth >= 768) {
+                      e.currentTarget.style.transform = 'scale(1) rotate(0deg)'
+                    }
+                  }}
+                />
+                {/* Glow effect */}
+                {!isMobile && (
+                  <div style={{
+                    position: 'absolute',
+                    inset: '-30%',
+                    background: 'radial-gradient(circle, rgba(212, 160, 23, 0.4) 0%, transparent 60%)',
+                    filter: 'blur(40px)',
+                    animation: 'glow 3s ease-in-out infinite',
+                    zIndex: -1,
+                    pointerEvents: 'none'
+                  }}></div>
+                )}
+              </div>
             </div>
 
-            {/* Logo Text - Centered */}
+            {/* Brand Name */}
             <h1
               style={{
-                fontSize: 'clamp(2.5rem, 7vw, 5rem)',
+                fontSize: isMobile ? 'clamp(2.5rem, 12vw, 4rem)' : 'clamp(3rem, 9vw, 6rem)',
                 fontFamily: 'Georgia, serif',
                 color: '#FFFFFF',
                 margin: 0,
                 fontWeight: 'bold',
-                textShadow: '3px 3px 12px rgba(0,0,0,0.6)',
-                letterSpacing: '2px',
-                animation: 'fadeInScale 1.2s ease-out'
+                textShadow: '4px 4px 16px rgba(0,0,0,0.7), 0 0 40px rgba(212, 160, 23, 0.3)',
+                letterSpacing: isMobile ? '1px' : 'clamp(1px, 0.3vw, 3px)',
+                animation: 'fadeInScale 1.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s backwards',
+                background: 'linear-gradient(135deg, #FFFFFF 0%, #F5C561 50%, #FFFFFF 100%)',
+                backgroundSize: '200% auto',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.3))'
               }}
             >
               {t('Louable')}
             </h1>
 
+            {/* Decorative line */}
+            <div style={{
+              width: isMobile ? '80px' : 'clamp(100px, 25vw, 150px)',
+              height: '4px',
+              background: 'linear-gradient(90deg, transparent, #D4A017 20%, #FFD700 50%, #D4A017 80%, transparent)',
+              animation: 'expandWidth 1.2s ease-out 0.6s backwards, shimmer 3s linear infinite',
+              borderRadius: '2px',
+              boxShadow: '0 0 20px rgba(212, 160, 23, 0.6)'
+            }}></div>
+
             {/* Featured Products Heading */}
             <h2
               style={{
-                fontSize: 'clamp(1.5rem, 4vw, 2.5rem)',
+                fontSize: isMobile ? 'clamp(1.5rem, 7vw, 2.2rem)' : 'clamp(1.8rem, 5vw, 3rem)',
                 fontFamily: 'Georgia, serif',
                 color: '#F8F4F0',
                 margin: 0,
-                fontWeight: '600',
-                textShadow: '2px 2px 8px rgba(0,0,0,0.5)',
-                letterSpacing: '1px',
-                animation: 'fadeInUp 1.4s ease-out'
+                fontWeight: '700',
+                textShadow: '3px 3px 12px rgba(0,0,0,0.6)',
+                letterSpacing: isMobile ? '0.5px' : 'clamp(0.5px, 0.2vw, 1.5px)',
+                animation: 'fadeInUp 1.6s ease-out 0.4s backwards'
               }}
             >
               {t('featuredProducts')}
@@ -395,14 +503,15 @@ export default function Home() {
             {/* Subtitle */}
             <p
               style={{
-                fontSize: 'clamp(1rem, 2vw, 1.5rem)',
+                fontSize: isMobile ? 'clamp(0.95rem, 4vw, 1.3rem)' : 'clamp(1.1rem, 3vw, 1.7rem)',
                 color: '#F8F4F0',
                 margin: 0,
                 fontFamily: 'Georgia, serif',
-                textShadow: '1px 1px 4px rgba(0,0,0,0.5)',
+                textShadow: '2px 2px 8px rgba(0,0,0,0.6)',
                 fontStyle: 'italic',
                 opacity: 0.95,
-                animation: 'fadeInUp 1.6s ease-out'
+                animation: 'fadeInUp 1.8s ease-out 0.6s backwards',
+                maxWidth: '90%'
               }}
             >
               Discover our premium chocolate collection ✨
@@ -415,45 +524,101 @@ export default function Home() {
       <section
         style={{
           background: c.background,
-          padding: '4rem 2rem',
-          transition: 'background 0.3s ease'
+          padding: isMobile ? '3rem 1rem' : 'clamp(4rem, 8vw, 6rem) clamp(1.5rem, 4vw, 2rem)',
+          transition: 'background 0.3s ease',
+          position: 'relative'
         }}
       >
+        {/* Decorative background pattern */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '200px',
+          background: `linear-gradient(to bottom, ${c.background}00, ${c.background})`,
+          pointerEvents: 'none'
+        }}></div>
+
         <div
           style={{
             maxWidth: '1400px',
-            margin: '0 auto'
+            margin: '0 auto',
+            position: 'relative'
           }}
         >
+          {/* Section Title */}
+          <div style={{
+            textAlign: 'center',
+            marginBottom: isMobile ? '2rem' : 'clamp(3rem, 6vw, 4rem)',
+            animation: 'fadeInUp 0.8s ease-out'
+          }}>
+            <h2 style={{
+              fontSize: isMobile ? 'clamp(1.8rem, 7vw, 2.5rem)' : 'clamp(2rem, 5vw, 3rem)',
+              fontFamily: 'Georgia, serif',
+              color: c.textDark,
+              fontWeight: '700',
+              marginBottom: '1rem',
+              letterSpacing: '-1px'
+            }}>
+              Our Collection
+            </h2>
+            <div style={{
+              width: isMobile ? '60px' : 'clamp(60px, 15vw, 80px)',
+              height: '4px',
+              background: `linear-gradient(90deg, transparent, ${c.secondary}, transparent)`,
+              margin: '0 auto',
+              borderRadius: '2px'
+            }}></div>
+          </div>
+
           {/* Products Grid */}
           {products.length === 0 ? (
             <div
               style={{
                 textAlign: 'center',
-                padding: '4rem 2rem',
-                color: c.textLight
+                padding: isMobile ? '3rem 1rem' : 'clamp(4rem, 8vw, 6rem) clamp(2rem, 4vw, 3rem)',
+                color: c.textLight,
+                animation: 'fadeIn 0.6s ease-out'
               }}
             >
               <div 
                 style={{ 
-                  fontSize: '4rem', 
-                  marginBottom: '1rem',
-                  animation: 'bounce 2s ease-in-out infinite'
+                  fontSize: isMobile ? '3rem' : 'clamp(4rem, 10vw, 6rem)', 
+                  marginBottom: 'clamp(1.5rem, 3vw, 2rem)',
+                  animation: 'bounce 2s ease-in-out infinite',
+                  filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.15))'
                 }}
               >
                 🍫
               </div>
-              <p style={{ fontSize: '1.25rem', fontFamily: 'Georgia, serif' }}>
+              <p style={{ 
+                fontSize: isMobile ? '1.1rem' : 'clamp(1.2rem, 3vw, 1.5rem)', 
+                fontFamily: 'Georgia, serif',
+                fontWeight: '600'
+              }}>
                 No products available yet
+              </p>
+              <p style={{ 
+                fontSize: isMobile ? '0.95rem' : 'clamp(1rem, 2.5vw, 1.1rem)',
+                opacity: 0.7,
+                marginTop: '0.5rem'
+              }}>
+                Check back soon for delicious chocolates!
               </p>
             </div>
           ) : (
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                gap: '2rem',
-                animation: 'fadeIn 0.6s ease-in-out'
+                // IMPROVED: Responsive grid columns
+                gridTemplateColumns: isSmallMobile 
+                  ? '1fr' 
+                  : isMobile 
+                    ? 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' 
+                    : 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
+                gap: isMobile ? '1.5rem' : 'clamp(1.5rem, 4vw, 2.5rem)',
+                animation: 'fadeIn 0.8s ease-in-out'
               }}
             >
               {products.map((product, index) => (
@@ -475,42 +640,81 @@ export default function Home() {
       <footer
         style={{
           background: theme === 'light' 
-            ? `linear-gradient(135deg, ${c.primary} 0%, ${c.textDark} 100%)`
+            ? `linear-gradient(135deg, ${c.primary} 0%, #2E1B1B 50%, ${c.textDark} 100%)`
             : `linear-gradient(135deg, ${c.card} 0%, ${c.background} 100%)`,
           color: theme === 'light' ? '#F8F4F0' : c.textDark,
-          padding: '3rem 2rem 2rem',
-          borderTop: `2px solid ${c.secondary}`,
-          transition: 'all 0.3s ease'
+          padding: isMobile ? '2.5rem 1rem 2rem' : 'clamp(3rem, 6vw, 4rem) clamp(1.5rem, 4vw, 2rem) clamp(2rem, 4vw, 3rem)',
+          borderTop: `3px solid ${c.secondary}`,
+          transition: 'all 0.3s ease',
+          position: 'relative',
+          overflow: 'hidden'
         }}
       >
+        {/* Decorative elements */}
+        {!isMobile && (
+          <div style={{
+            position: 'absolute',
+            top: '-50px',
+            right: '-50px',
+            width: '200px',
+            height: '200px',
+            background: `radial-gradient(circle, ${c.secondary}20, transparent)`,
+            borderRadius: '50%',
+            filter: 'blur(40px)',
+            pointerEvents: 'none'
+          }}></div>
+        )}
+
         <div
           style={{
             maxWidth: '1400px',
             margin: '0 auto',
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '3rem',
-            marginBottom: '2rem'
+            // IMPROVED: Footer grid responsiveness
+            gridTemplateColumns: isSmallMobile || isMobile
+              ? '1fr'
+              : 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
+            gap: isMobile ? '2rem' : 'clamp(2.5rem, 5vw, 4rem)',
+            marginBottom: isMobile ? '1.5rem' : 'clamp(2rem, 4vw, 3rem)',
+            position: 'relative',
+            zIndex: 1
           }}
         >
           {/* Brand Section */}
-          <div>
-            <h3
-              style={{
-                fontSize: '1.75rem',
-                fontFamily: 'Georgia, serif',
-                color: c.secondary,
-                marginBottom: '1rem',
-                fontWeight: 'bold',
-                letterSpacing: '1px'
-              }}
-            >
-              {t('Louable')}
-            </h3>
+          <div style={{ textAlign: isMobile ? 'center' : 'left' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '1.5rem',
+              justifyContent: isMobile ? 'center' : 'flex-start'
+            }}>
+              <img 
+                src={getImage('logo')} 
+                alt="Louable" 
+                style={{ 
+                  height: isMobile ? '40px' : '50px',
+                  filter: theme === 'dark' ? 'brightness(1.2)' : 'brightness(1.1) drop-shadow(0 2px 8px rgba(0,0,0,0.3))'
+                }} 
+              />
+              <h3
+                style={{
+                  fontSize: isMobile ? '1.5rem' : 'clamp(1.6rem, 4vw, 2rem)',
+                  fontFamily: 'Georgia, serif',
+                  color: c.secondary,
+                  marginBottom: 0,
+                  fontWeight: 'bold',
+                  letterSpacing: '1px',
+                  textShadow: theme === 'light' ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none'
+                }}
+              >
+                {t('Louable')}
+              </h3>
+            </div>
             <p
               style={{
-                fontSize: '0.95rem',
-                lineHeight: '1.6',
+                fontSize: isMobile ? '0.9rem' : 'clamp(0.95rem, 2.5vw, 1.05rem)',
+                lineHeight: '1.7',
                 opacity: 0.9,
                 fontFamily: 'Georgia, serif',
                 fontStyle: 'italic'
@@ -521,14 +725,15 @@ export default function Home() {
           </div>
 
           {/* Quick Links */}
-          <div>
+          <div style={{ textAlign: isMobile ? 'center' : 'left' }}>
             <h4
               style={{
-                fontSize: '1.25rem',
+                fontSize: isMobile ? '1.1rem' : 'clamp(1.2rem, 3vw, 1.4rem)',
                 fontFamily: 'Georgia, serif',
                 color: c.secondary,
-                marginBottom: '1rem',
-                fontWeight: '600'
+                marginBottom: '1.5rem',
+                fontWeight: '700',
+                letterSpacing: '0.5px'
               }}
             >
               {t('quickLinks')}
@@ -541,25 +746,27 @@ export default function Home() {
               }}
             >
               {[
-                { key: 'home', label: t('home') },
-                { key: 'products', label: t('products') },
-                { key: 'aboutUs', label: t('aboutUs') },
-                { key: 'contact', label: t('contact') }
+                { key: 'home', label: t('home'), path: '/home' },
+                { key: 'products', label: t('products'), path: '/home' },
+                { key: 'aboutUs', label: t('aboutUs'), path: '/about' },
+                { key: 'contact', label: t('contact'), path: '#' }
               ].map((link) => (
-                <li key={link.key} style={{ marginBottom: '0.75rem' }}>
-                  <a
-                    href="#"
+                <li key={link.key} style={{ marginBottom: '1rem' }}>
+                  <Link
+                    to={link.path}
                     style={{
                       color: 'inherit',
                       textDecoration: 'none',
-                      fontSize: '0.95rem',
+                      fontSize: isMobile ? '0.9rem' : 'clamp(0.95rem, 2.5vw, 1.05rem)',
                       opacity: 0.85,
                       transition: 'all 0.3s ease',
-                      display: 'inline-block'
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.opacity = '1'
-                      e.currentTarget.style.transform = lang === 'ar' ? 'translateX(-5px)' : 'translateX(5px)'
+                      e.currentTarget.style.transform = lang === 'ar' ? 'translateX(-8px)' : 'translateX(8px)'
                       e.currentTarget.style.color = c.secondary
                     }}
                     onMouseLeave={(e) => {
@@ -568,126 +775,160 @@ export default function Home() {
                       e.currentTarget.style.color = 'inherit'
                     }}
                   >
+                    <span>→</span>
                     {link.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
           </div>
 
           {/* Contact Info */}
-          <div>
+          <div style={{ textAlign: isMobile ? 'center' : 'left' }}>
             <h4
               style={{
-                fontSize: '1.25rem',
+                fontSize: isMobile ? '1.1rem' : 'clamp(1.2rem, 3vw, 1.4rem)',
                 fontFamily: 'Georgia, serif',
                 color: c.secondary,
-                marginBottom: '1rem',
-                fontWeight: '600'
+                marginBottom: '1.5rem',
+                fontWeight: '700',
+                letterSpacing: '0.5px'
               }}
             >
               {t('contactUs')}
             </h4>
-            <div style={{ fontSize: '0.95rem', lineHeight: '1.8', opacity: 0.9 }}>
-              <p style={{ margin: '0 0 0.5rem 0' }}>
-                📧 louablefactory@gmail.com
+            <div style={{ 
+              fontSize: isMobile ? '0.9rem' : 'clamp(0.95rem, 2.5vw, 1.05rem)', 
+              lineHeight: '2', 
+              opacity: 0.9 
+            }}>
+              <p style={{ 
+                margin: '0 0 0.8rem 0', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '10px',
+                justifyContent: isMobile ? 'center' : 'flex-start'
+              }}>
+                <span style={{ fontSize: '1.2rem' }}>📧</span>
+                louablefactory@gmail.com
               </p>
-              <p style={{ margin: '0 0 0.5rem 0' }}>
-                📱 +20 123 456 7890
+              <p style={{ 
+                margin: '0 0 0.8rem 0', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '10px',
+                justifyContent: isMobile ? 'center' : 'flex-start'
+              }}>
+                <span style={{ fontSize: '1.2rem' }}>📱</span>
+                +20 123 456 7890
               </p>
-              <p style={{ margin: '0 0 0.5rem 0' }}>
-                📍 Luxor, Egypt
+              <p style={{ 
+                margin: '0 0 0.8rem 0', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '10px',
+                justifyContent: isMobile ? 'center' : 'flex-start'
+              }}>
+                <span style={{ fontSize: '1.2rem' }}>📍</span>
+                Luxor, Egypt
               </p>
             </div>
           </div>
 
           {/* Social Media */}
-<div>
-  <h4
-    style={{
-      fontSize: '1.25rem',
-      fontFamily: 'Georgia, serif',
-      color: c.secondary,
-      marginBottom: '1rem',
-      fontWeight: '600'
-    }}
-  >
-    {t('followUs')}
-  </h4>
-  <div
-    style={{
-      display: 'flex',
-      gap: '1rem',
-      flexWrap: 'wrap'
-    }}
-  >
-    {[
-      { icon: facebookIcon, name: 'Facebook' },
-      { icon: instagramIcon, name: 'Instagram' },
-      { icon: twitterIcon, name: 'Twitter' },
-      { icon: whatsappIcon, name: 'WhatsApp' }
-    ].map((social) => (
-      <a
-        key={social.name}
-        href="#"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '45px',
-          height: '45px',
-          background: 'rgba(255, 255, 255, 0.1)',
-          borderRadius: '50%',
-          textDecoration: 'none',
-          transition: 'all 0.3s ease',
-          border: `2px solid ${c.secondary}40`
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = c.secondary
-          e.currentTarget.style.transform = 'scale(1.1) rotate(5deg)'
-          e.currentTarget.style.borderColor = c.secondary
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
-          e.currentTarget.style.transform = 'scale(1) rotate(0deg)'
-          e.currentTarget.style.borderColor = `${c.secondary}40`
-        }}
-        aria-label={social.name}
-      >
-        {/* ✅ Render as img tag */}
-        <img
-          src={social.icon}
-          alt={social.name}
-          style={{
-            width: '24px',
-            height: '24px',
-            objectFit: 'contain'
-          }}
-        />
-      </a>
-    ))}
-  </div>
-</div>
+          <div style={{ textAlign: isMobile ? 'center' : 'left' }}>
+            <h4
+              style={{
+                fontSize: isMobile ? '1.1rem' : 'clamp(1.2rem, 3vw, 1.4rem)',
+                fontFamily: 'Georgia, serif',
+                color: c.secondary,
+                marginBottom: '1.5rem',
+                fontWeight: '700',
+                letterSpacing: '0.5px'
+              }}
+            >
+              {t('followUs')}
+            </h4>
+            <div
+              style={{
+                display: 'flex',
+                gap: isMobile ? '0.8rem' : 'clamp(0.8rem, 2vw, 1.2rem)',
+                flexWrap: 'wrap',
+                justifyContent: isMobile ? 'center' : 'flex-start'
+              }}
+            >
+              {[
+                { icon: facebookIcon, name: 'Facebook' },
+                { icon: instagramIcon, name: 'Instagram' },
+                { icon: twitterIcon, name: 'Twitter' },
+                { icon: whatsappIcon, name: 'WhatsApp' }
+              ].map((social) => (
+                <a
+                  key={social.name}
+                  href="#"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: isMobile ? '48px' : 'clamp(48px, 11vw, 52px)',
+                    height: isMobile ? '48px' : 'clamp(48px, 11vw, 52px)',
+                    background: 'rgba(255, 255, 255, 0.15)',
+                    borderRadius: '50%',
+                    textDecoration: 'none',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    border: `2px solid ${c.secondary}50`,
+                    backdropFilter: 'blur(10px)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = c.secondary
+                    e.currentTarget.style.transform = 'scale(1.15) rotate(5deg)'
+                    e.currentTarget.style.borderColor = c.secondary
+                    e.currentTarget.style.boxShadow = `0 8px 20px ${c.secondary}60`
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'
+                    e.currentTarget.style.transform = 'scale(1) rotate(0deg)'
+                    e.currentTarget.style.borderColor = `${c.secondary}50`
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
+                  aria-label={social.name}
+                >
+                  <img
+                    src={social.icon}
+                    alt={social.name}
+                    style={{
+                      width: isMobile ? '24px' : 'clamp(24px, 5vw, 28px)',
+                      height: isMobile ? '24px' : 'clamp(24px, 5vw, 28px)',
+                      objectFit: 'contain',
+                      transition: 'filter 0.3s ease'
+                    }}
+                  />
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Bottom Bar */}
         <div
           style={{
-            paddingTop: '2rem',
-            marginTop: '2rem',
+            paddingTop: isMobile ? '1.5rem' : 'clamp(2rem, 4vw, 3rem)',
+            marginTop: isMobile ? '1.5rem' : 'clamp(2rem, 4vw, 3rem)',
             borderTop: `1px solid ${theme === 'light' ? 'rgba(255,255,255,0.2)' : c.border}`,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             gap: '1rem',
-            textAlign: 'center'
+            textAlign: 'center',
+            position: 'relative',
+            zIndex: 1
           }}
         >
           <p
             style={{
               margin: 0,
-              fontSize: '0.9rem',
-              opacity: 0.8
+              fontSize: isMobile ? '0.85rem' : 'clamp(0.9rem, 2.5vw, 1rem)',
+              opacity: 0.85
             }}
           >
             © {new Date().getFullYear()} {t('Louable')}. {t('allRightsReserved')}.
@@ -695,67 +936,148 @@ export default function Home() {
           <p
             style={{
               margin: 0,
-              fontSize: '0.85rem',
-              opacity: 0.7,
-              fontStyle: 'italic'
+              fontSize: isMobile ? '0.8rem' : 'clamp(0.85rem, 2.2vw, 0.95rem)',
+              opacity: 0.75,
+              fontStyle: 'italic',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              flexWrap: 'wrap',
+              justifyContent: 'center'
             }}
           >
-            {t('handcraftedWith')}  {lang === '' ? '' : ''} ❤️
+            {t('handcraftedWith')} <span style={{ color: '#FF6B6B', animation: 'heartbeat 1.5s ease-in-out infinite' }}>❤️</span>
           </p>
         </div>
       </footer>
 
-      {/* Add animations */}
-      <style>
-        {`
-          @keyframes fadeIn {
-            from {
-              opacity: 0;
-            }
-            to {
-              opacity: 1;
-            }
-          }
+      {/* Global Animations */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
 
-          @keyframes fadeInUp {
-            from {
-              opacity: 0;
-              transform: translateY(30px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
           }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
 
-          @keyframes fadeInScale {
-            from {
-              opacity: 0;
-              transform: scale(0.9);
-            }
-            to {
-              opacity: 1;
-              transform: scale(1);
-            }
+        @keyframes fadeInScale {
+          from {
+            opacity: 0;
+            transform: scale(0.9);
           }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
 
-          @keyframes bounce {
-            0%, 100% {
-              transform: translateY(0);
-            }
-            50% {
-              transform: translateY(-10px);
-            }
+        @keyframes floatGentle {
+          0%, 100% { 
+            transform: translateY(0px); 
           }
+          50% { 
+            transform: translateY(-15px); 
+          }
+        }
 
-          @media (max-width: 768px) {
-            /* Mobile optimizations */
-            section {
-              min-height: 450px !important;
-            }
+        @keyframes bounce {
+          0%, 100% {
+            transform: translateY(0);
           }
-        `}
-      </style>
+          50% {
+            transform: translateY(-15px);
+          }
+        }
+
+        @keyframes glow {
+          0%, 100% {
+            opacity: 0.4;
+          }
+          50% {
+            opacity: 0.7;
+          }
+        }
+
+        @keyframes shimmer {
+          0% {
+            background-position: 0% center;
+          }
+          100% {
+            background-position: 200% center;
+          }
+        }
+
+        @keyframes expandWidth {
+          from { 
+            width: 0; 
+            opacity: 0; 
+          }
+          to { 
+            opacity: 1; 
+          }
+        }
+
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+
+        @keyframes kenBurns {
+          0% {
+            transform: scale(1);
+          }
+          100% {
+            transform: scale(1.1);
+          }
+        }
+
+        @keyframes cartBadgePulse {
+          0%, 100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.1);
+          }
+        }
+
+        @keyframes heartbeat {
+          0%, 100% {
+            transform: scale(1);
+          }
+          25% {
+            transform: scale(1.2);
+          }
+          50% {
+            transform: scale(1);
+          }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+          * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+          }
+        }
+
+        /* Landscape orientation adjustments for mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+          section:first-of-type {
+            min-height: 500px !important;
+            height: 100vh !important;
+          }
+        }
+      `}</style>
     </>
   )
 }

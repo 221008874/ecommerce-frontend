@@ -1,4 +1,5 @@
-// src/pages/ProductDetail.jsx
+// src/pages/ProductDetail_RESPONSIVE.jsx
+// Enhanced version with improved responsive design
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
@@ -14,6 +15,19 @@ export default function ProductDetail() {
   const { addToCart } = useCart()
   const { theme, getImage } = useTheme()
   const [product, setProduct] = useState(null)
+
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1024
+  )
+
+  const isMobile = windowWidth < 768
+  const isSmallMobile = windowWidth < 480
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const colors = {
     light: {
@@ -68,23 +82,50 @@ export default function ProductDetail() {
   if (!product) {
     return (
       <div style={{ 
-        padding: '24px', 
+        padding: isMobile ? '1.5rem' : '24px', 
         textAlign: 'center',
         background: c.background,
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        gap: '24px'
       }}>
         <div style={{
-          width: '50px',
-          height: '50px',
-          border: `4px solid ${c.border}`,
-          borderTop: `4px solid ${c.secondary}`,
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
+          width: isMobile ? '70px' : '80px',
+          height: isMobile ? '70px' : '80px',
+          position: 'relative'
+        }}>
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            border: `6px solid ${c.border}`,
+            borderRadius: '50%'
+          }}></div>
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            border: '6px solid transparent',
+            borderTopColor: c.secondary,
+            borderRightColor: c.secondary,
+            borderRadius: '50%',
+            animation: 'spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite'
+          }}></div>
+        </div>
+        <p style={{
+          color: c.textDark,
+          fontSize: isMobile ? '1rem' : '1.1rem',
+          fontWeight: '600',
+          padding: '0 1rem'
+        }}>
+          Loading product details...
+        </p>
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     )
   }
@@ -92,41 +133,50 @@ export default function ProductDetail() {
   const handleAddToCart = () => {
     addToCart(product)
     const successMsg = document.createElement('div')
-    successMsg.textContent = '✓ Added to cart!'
+    successMsg.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 1.5rem;">✓</span>
+        <span>Added to cart!</span>
+      </div>
+    `
     successMsg.style.cssText = `
       position: fixed;
-      top: 100px;
+      top: ${isMobile ? '80px' : '100px'};
       left: 50%;
       transform: translateX(-50%);
-      background: ${c.success};
+      background: linear-gradient(135deg, ${c.success}, #7CB342);
       color: white;
-      padding: 16px 32px;
-      border-radius: 8px;
+      padding: ${isMobile ? '14px 24px' : '16px 32px'};
+      borderRadius: 12px;
       font-weight: 700;
-      box-shadow: 0 4px 20px rgba(139, 195, 74, 0.4);
+      box-shadow: 0 8px 24px rgba(139, 195, 74, 0.5);
       z-index: 1000;
-      animation: slideUp 0.3s ease-out;
-      font-size: clamp(0.9rem, 3vw, 1rem);
+      animation: slideInBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      font-size: ${isMobile ? '0.9rem' : 'clamp(0.95rem, 3vw, 1.05rem)'};
+      max-width: 90%;
     `
     document.body.appendChild(successMsg)
-    setTimeout(() => successMsg.remove(), 2000)
+    setTimeout(() => {
+      successMsg.style.animation = 'slideOut 0.3s ease-out forwards'
+      setTimeout(() => successMsg.remove(), 300)
+    }, 2000)
   }
 
   return (
     <div style={{ 
-      padding: 'clamp(24px, 4vw, 32px) clamp(16px, 3vw, 24px)',
+      padding: isMobile ? '1.5rem 1rem' : 'clamp(24px, 4vw, 32px) clamp(16px, 3vw, 24px)',
       backgroundColor: c.background,
       minHeight: '100vh',
       animation: 'fadeIn 0.5s ease-out'
     }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        {/* Header with Logo and Back Button */}
+      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        {/* Header */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: 'clamp(20px, 4vw, 24px)',
-          gap: 'clamp(12px, 3vw, 16px)',
+          marginBottom: isMobile ? '1.5rem' : 'clamp(24px, 5vw, 32px)',
+          gap: isMobile ? '12px' : 'clamp(16px, 4vw, 20px)',
           flexWrap: 'wrap'
         }}>
           <button
@@ -136,66 +186,92 @@ export default function ProductDetail() {
               border: `2px solid ${c.primary}`,
               color: c.primary,
               cursor: 'pointer',
-              fontSize: 'clamp(0.85rem, 2.5vw, 0.95rem)',
-              fontWeight: '600',
+              fontSize: isMobile ? '0.85rem' : 'clamp(0.9rem, 2.8vw, 1rem)',
+              fontWeight: '700',
               display: 'flex',
               alignItems: 'center',
-              gap: 'clamp(6px, 1.5vw, 8px)',
-              padding: 'clamp(8px, 2vw, 10px) clamp(16px, 3vw, 20px)',
-              borderRadius: 'clamp(6px, 1.5vw, 8px)',
+              gap: isMobile ? '6px' : 'clamp(8px, 2vw, 10px)',
+              padding: isMobile ? '10px 16px' : 'clamp(10px, 2.5vw, 12px) clamp(20px, 4vw, 24px)',
+              borderRadius: isMobile ? '8px' : 'clamp(8px, 2vw, 10px)',
               transition: 'all 0.3s ease',
               whiteSpace: 'nowrap'
             }}
             onMouseEnter={(e) => {
-              if (window.innerWidth >= 768) {
+              if (windowWidth >= 768) {
                 e.currentTarget.style.background = c.primary
                 e.currentTarget.style.color = theme === 'light' ? '#FFFFFF' : c.textDark
-                e.currentTarget.style.transform = 'translateX(-4px)'
+                e.currentTarget.style.transform = 'translateX(-6px)'
               }
             }}
             onMouseLeave={(e) => {
-              if (window.innerWidth >= 768) {
+              if (windowWidth >= 768) {
                 e.currentTarget.style.background = 'transparent'
                 e.currentTarget.style.color = c.primary
                 e.currentTarget.style.transform = 'translateX(0)'
               }
             }}
             onTouchStart={(e) => {
-              e.currentTarget.style.opacity = '0.7'
+              e.currentTarget.style.transform = 'scale(0.95)'
             }}
             onTouchEnd={(e) => {
-              e.currentTarget.style.opacity = '1'
+              e.currentTarget.style.transform = 'scale(1)'
             }}
           >
-            ← {t('backToProducts')}
+            <span>←</span>
+            {t('backToProducts')}
           </button>
           
           <div style={{
-            height: 'clamp(50px, 10vw, 60px)'
+            height: isMobile ? '50px' : 'clamp(55px, 12vw, 70px)'
           }}>
             <img 
               src={getImage('logo')} 
               alt="Louable" 
-              style={{ height: '100%' }} 
+              style={{ 
+                height: '100%',
+                filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.15))'
+              }} 
             />
           </div>
         </div>
 
+        {/* Product Details Card */}
         <div style={{
           background: c.card,
-          borderRadius: 'clamp(12px, 2vw, 16px)',
-          padding: 'clamp(20px, 4vw, 32px)',
+          borderRadius: isMobile ? '12px' : 'clamp(16px, 3vw, 20px)',
+          padding: isMobile ? '20px' : 'clamp(24px, 5vw, 40px)',
           border: `1px solid ${c.border}`,
           boxShadow: theme === 'light'
-            ? '0 4px 20px rgba(62, 39, 35, 0.1)'
-            : '0 4px 20px rgba(0, 0, 0, 0.3)'
+            ? '0 8px 32px rgba(62, 39, 35, 0.12)'
+            : '0 8px 32px rgba(0, 0, 0, 0.4)',
+          position: 'relative',
+          overflow: 'hidden'
         }}>
+          {/* Decorative background */}
+          {!isMobile && (
+            <div style={{
+              position: 'absolute',
+              top: '-50%',
+              right: '-20%',
+              width: '400px',
+              height: '400px',
+              background: `radial-gradient(circle, ${c.secondary}08, transparent)`,
+              borderRadius: '50%',
+              filter: 'blur(60px)',
+              pointerEvents: 'none'
+            }}></div>
+          )}
+
+          {/* Product Image */}
           {product?.imageUrl ? (
             <div style={{ 
               position: 'relative', 
-              marginBottom: 'clamp(24px, 5vw, 32px)',
-              borderRadius: 'clamp(10px, 2vw, 12px)',
-              overflow: 'hidden'
+              marginBottom: isMobile ? '20px' : 'clamp(28px, 6vw, 40px)',
+              borderRadius: isMobile ? '10px' : 'clamp(12px, 2.5vw, 16px)',
+              overflow: 'hidden',
+              boxShadow: theme === 'light'
+                ? '0 8px 24px rgba(0,0,0,0.12)'
+                : '0 8px 24px rgba(0,0,0,0.4)'
             }}>
               <img
                 src={product.imageUrl}
@@ -203,267 +279,433 @@ export default function ProductDetail() {
                 style={{
                   width: '100%',
                   height: 'auto',
-                  maxHeight: 'clamp(300px, 50vw, 400px)',
+                  // IMPROVED: Better mobile image height
+                  maxHeight: isMobile ? 'clamp(300px, 50vh, 400px)' : 'clamp(350px, 55vw, 450px)',
                   objectFit: 'cover',
-                  borderRadius: 'clamp(10px, 2vw, 12px)',
-                  border: `1px solid ${c.border}`
+                  borderRadius: isMobile ? '10px' : 'clamp(12px, 2.5vw, 16px)',
+                  filter: theme === 'dark' ? 'brightness(0.95)' : 'brightness(1)'
                 }}
               />
+              
+              {/* Gradient overlay */}
               <div style={{
                 position: 'absolute',
-                top: 'clamp(12px, 3vw, 16px)',
-                right: lang === 'ar' ? 'auto' : 'clamp(12px, 3vw, 16px)',
-                left: lang === 'ar' ? 'clamp(12px, 3vw, 16px)' : 'auto',
-                background: c.secondary,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: '40%',
+                background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.3))',
+                pointerEvents: 'none'
+              }}></div>
+
+              {/* Premium Badge */}
+              <div style={{
+                position: 'absolute',
+                top: isMobile ? '12px' : 'clamp(16px, 3.5vw, 20px)',
+                right: lang === 'ar' ? 'auto' : (isMobile ? '12px' : 'clamp(16px, 3.5vw, 20px)'),
+                left: lang === 'ar' ? (isMobile ? '12px' : 'clamp(16px, 3.5vw, 20px)') : 'auto',
+                background: 'linear-gradient(135deg, #FFD700, #D4A017)',
                 color: '#FFFFFF',
-                padding: 'clamp(6px, 1.5vw, 8px) clamp(12px, 3vw, 16px)',
-                borderRadius: 'clamp(6px, 1.5vw, 8px)',
-                fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)',
-                fontWeight: '700',
-                boxShadow: '0 4px 12px rgba(212, 160, 23, 0.4)',
+                padding: isMobile ? '6px 12px' : 'clamp(8px, 2vw, 10px) clamp(16px, 3.5vw, 20px)',
+                borderRadius: isMobile ? '8px' : 'clamp(8px, 2vw, 10px)',
+                fontSize: isMobile ? '0.75rem' : 'clamp(0.85rem, 2.8vw, 1rem)',
+                fontWeight: '800',
+                boxShadow: '0 6px 20px rgba(212, 160, 23, 0.6)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '6px',
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                animation: 'badgeGlow 2s ease-in-out infinite'
               }}>
-                ✨ Premium Quality
+                <span style={{ fontSize: isMobile ? '1rem' : '1.2rem' }}>✨</span>
+                Premium{isMobile ? '' : ' Quality'}
               </div>
             </div>
           ) : (
             <div style={{
               width: '100%',
-              height: 'clamp(300px, 50vw, 400px)',
+              height: isMobile ? '250px' : 'clamp(350px, 55vw, 450px)',
               background: theme === 'light' 
                 ? 'linear-gradient(135deg, #E8DDD4 0%, #D4C4B8 100%)'
                 : 'linear-gradient(135deg, #3E2723 0%, #5D4037 100%)',
-              borderRadius: 'clamp(10px, 2vw, 12px)',
+              borderRadius: isMobile ? '10px' : 'clamp(12px, 2.5vw, 16px)',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
               alignItems: 'center',
-              marginBottom: 'clamp(24px, 5vw, 32px)',
-              fontSize: 'clamp(4rem, 12vw, 5rem)',
-              border: `1px solid ${c.border}`
+              marginBottom: isMobile ? '20px' : 'clamp(28px, 6vw, 40px)',
+              fontSize: isMobile ? '3.5rem' : 'clamp(5rem, 15vw, 7rem)',
+              border: `2px solid ${c.border}`,
+              position: 'relative',
+              overflow: 'hidden'
             }}>
-              🍫
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'radial-gradient(circle, rgba(212, 160, 23, 0.05), transparent)',
+                animation: 'pulse 3s ease-in-out infinite'
+              }}></div>
+              <span style={{ animation: 'bounce 2s ease-in-out infinite' }}>🍫</span>
               <p style={{ 
-                fontSize: 'clamp(0.9rem, 3vw, 1rem)', 
+                fontSize: isMobile ? '0.95rem' : 'clamp(1rem, 3.5vw, 1.2rem)', 
                 color: c.textLight, 
-                marginTop: '16px' 
+                marginTop: '20px',
+                fontWeight: '600'
               }}>
                 Product Image
               </p>
             </div>
           )}
 
-          <h1 style={{ 
-            fontSize: 'clamp(1.5rem, 5vw, 2.5rem)',
-            marginBottom: 'clamp(12px, 3vw, 16px)',
-            color: c.textDark,
-            fontWeight: '700',
-            letterSpacing: '-0.5px',
-            lineHeight: 1.2
-          }}>
-            {product.name}
-          </h1>
-          
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 'clamp(12px, 3vw, 16px)',
-            marginBottom: 'clamp(20px, 4vw, 24px)',
-            flexWrap: 'wrap'
-          }}>
-            <p style={{ 
-              color: c.secondary, 
-              fontSize: 'clamp(1.5rem, 5vw, 2rem)',
-              fontWeight: '700', 
-              margin: 0 
+          {/* Product Info */}
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <h1 style={{ 
+              fontSize: isMobile ? 'clamp(1.5rem, 8vw, 2.2rem)' : 'clamp(1.8rem, 6vw, 3rem)',
+              marginBottom: isMobile ? '12px' : 'clamp(16px, 3.5vw, 24px)',
+              color: c.textDark,
+              fontWeight: '700',
+              letterSpacing: '-1px',
+              lineHeight: 1.2,
+              fontFamily: 'Georgia, serif'
             }}>
-              ${product.price.toFixed(2)}
-            </p>
+              {product.name}
+            </h1>
+            
+            {/* Price and Rating */}
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: '4px', 
-              padding: 'clamp(4px, 1vw, 6px) clamp(8px, 2vw, 12px)',
-              background: c.background, 
-              borderRadius: '20px', 
-              border: `1px solid ${c.border}` 
+              gap: isMobile ? '12px' : 'clamp(16px, 4vw, 24px)',
+              marginBottom: isMobile ? '20px' : 'clamp(24px, 5vw, 32px)',
+              flexWrap: 'wrap',
+              justifyContent: isMobile ? 'center' : 'flex-start'
             }}>
-              <span style={{ fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)' }}>⭐⭐⭐⭐⭐</span>
-              <span style={{ 
-                fontSize: 'clamp(0.75rem, 2vw, 0.85rem)',
-                color: c.textLight, 
-                fontWeight: '600' 
+              <div style={{
+                background: `linear-gradient(135deg, ${c.secondary}20, ${c.secondary}10)`,
+                padding: isMobile ? '8px 16px' : 'clamp(10px, 2.5vw, 14px) clamp(20px, 4vw, 28px)',
+                borderRadius: '12px',
+                border: `2px solid ${c.secondary}40`,
+                boxShadow: theme === 'light'
+                  ? '0 4px 16px rgba(212, 160, 23, 0.2)'
+                  : '0 4px 16px rgba(212, 160, 23, 0.4)'
               }}>
-                5.0
-              </span>
+                <p style={{ 
+                  color: c.secondary,
+                  fontSize: isMobile ? '1.6rem' : 'clamp(1.8rem, 6vw, 2.5rem)',
+                  fontWeight: '800', 
+                  margin: 0,
+                  textShadow: theme === 'dark' ? '0 2px 8px rgba(212, 160, 23, 0.4)' : 'none'
+                }}>
+                  ${product.price.toFixed(2)}
+                </p>
+              </div>
+              
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                padding: isMobile ? '8px 14px' : 'clamp(8px, 2vw, 12px) clamp(16px, 3.5vw, 20px)',
+                background: c.background, 
+                borderRadius: '24px', 
+                border: `2px solid ${c.border}`,
+                boxShadow: '0 2px 12px rgba(0,0,0,0.08)'
+              }}>
+                <span style={{ 
+                  fontSize: isMobile ? '0.8rem' : 'clamp(0.9rem, 2.8vw, 1rem)',
+                  filter: 'drop-shadow(0 2px 4px rgba(255, 215, 0, 0.4))'
+                }}>
+                  ⭐⭐⭐⭐⭐
+                </span>
+                <span style={{ 
+                  fontSize: isMobile ? '0.8rem' : 'clamp(0.85rem, 2.5vw, 1rem)',
+                  color: c.textLight, 
+                  fontWeight: '700' 
+                }}>
+                  5.0
+                </span>
+              </div>
             </div>
-          </div>
 
-          <p style={{ 
-            fontWeight: '600', 
-            color: c.textDark, 
-            marginBottom: 'clamp(6px, 1.5vw, 8px)',
-            fontSize: 'clamp(0.95rem, 3vw, 1.1rem)' 
-          }}>
-            <strong>{t('piecesPerBox')}:</strong> 
-            <span style={{ color: c.secondary, marginLeft: '8px' }}>
-              {product.piecesPerBox} pieces
-            </span>
-          </p>
-          
-          <div style={{ marginBottom: 'clamp(20px, 4vw, 24px)' }}>
-            <p style={{ 
-              fontWeight: '600', 
-              color: c.textDark, 
-              marginBottom: 'clamp(10px, 2vw, 12px)',
-              fontSize: 'clamp(0.95rem, 3vw, 1.1rem)' 
+            {/* Pieces Per Box */}
+            <div style={{
+              background: c.background,
+              padding: isMobile ? '12px 14px' : 'clamp(12px, 3vw, 16px) clamp(16px, 4vw, 20px)',
+              borderRadius: '10px',
+              marginBottom: isMobile ? '16px' : 'clamp(20px, 4vw, 24px)',
+              border: `1px solid ${c.border}`
             }}>
-              <strong>{t('flavors')}:</strong>
-            </p>
+              <p style={{ 
+                fontWeight: '700', 
+                color: c.textDark, 
+                margin: 0,
+                fontSize: isMobile ? '0.95rem' : 'clamp(1rem, 3.2vw, 1.15rem)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                flexWrap: 'wrap',
+                justifyContent: isMobile ? 'center' : 'flex-start'
+              }}>
+                <span style={{ fontSize: isMobile ? '1.3rem' : '1.5rem' }}>📦</span>
+                <strong>{t('piecesPerBox')}:</strong> 
+                <span style={{ color: c.secondary, fontWeight: '800' }}>
+                  {product.piecesPerBox} pieces
+                </span>
+              </p>
+            </div>
+            
+            {/* Flavors */}
+            <div style={{ marginBottom: isMobile ? '20px' : 'clamp(24px, 5vw, 32px)' }}>
+              <p style={{ 
+                fontWeight: '700', 
+                color: c.textDark, 
+                marginBottom: isMobile ? '10px' : 'clamp(12px, 3vw, 16px)',
+                fontSize: isMobile ? '0.95rem' : 'clamp(1rem, 3.2vw, 1.15rem)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                justifyContent: isMobile ? 'center' : 'flex-start'
+              }}>
+                <span style={{ fontSize: isMobile ? '1.3rem' : '1.5rem' }}>🍬</span>
+                <strong>{t('flavors')}:</strong>
+              </p>
+              <div style={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: isMobile ? '8px' : 'clamp(8px, 2vw, 12px)',
+                justifyContent: isMobile ? 'center' : 'flex-start'
+              }}>
+                {product.flavors.map((flavor, index) => (
+                  <span key={index} style={{
+                    background: `linear-gradient(135deg, ${c.background}, ${c.card})`,
+                    padding: isMobile ? '10px 16px' : 'clamp(10px, 2.5vw, 14px) clamp(16px, 4vw, 22px)',
+                    borderRadius: '24px',
+                    fontSize: isMobile ? '0.85rem' : 'clamp(0.9rem, 2.8vw, 1.05rem)',
+                    color: c.textDark,
+                    border: `2px solid ${c.border}`,
+                    fontWeight: '600',
+                    transition: 'all 0.3s ease',
+                    cursor: 'default',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                    animation: `fadeInUp 0.5s ease-out ${index * 0.1}s backwards`
+                  }}
+                  onMouseEnter={(e) => {
+                    if (windowWidth >= 768) {
+                      e.currentTarget.style.background = `linear-gradient(135deg, ${c.secondary}, #D4A017)`
+                      e.currentTarget.style.color = '#FFFFFF'
+                      e.currentTarget.style.borderColor = c.secondary
+                      e.currentTarget.style.transform = 'translateY(-4px) scale(1.05)'
+                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(212, 160, 23, 0.4)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (windowWidth >= 768) {
+                      e.currentTarget.style.background = `linear-gradient(135deg, ${c.background}, ${c.card})`
+                      e.currentTarget.style.color = c.textDark
+                      e.currentTarget.style.borderColor = c.border
+                      e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'
+                    }
+                  }}
+                  >
+                    {flavor}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Description */}
+            <div style={{ marginBottom: isMobile ? '24px' : 'clamp(32px, 6vw, 48px)' }}>
+              <p style={{ 
+                fontWeight: '700', 
+                color: c.textDark, 
+                marginBottom: isMobile ? '10px' : 'clamp(12px, 3vw, 16px)',
+                fontSize: isMobile ? '0.95rem' : 'clamp(1rem, 3.2vw, 1.15rem)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                justifyContent: isMobile ? 'center' : 'flex-start'
+              }}>
+                <span style={{ fontSize: isMobile ? '1.3rem' : '1.5rem' }}>📝</span>
+                <strong>{t('description')}:</strong>
+              </p>
+              <p style={{ 
+                color: c.textLight, 
+                lineHeight: 1.8, 
+                fontSize: isMobile ? '0.9rem' : 'clamp(0.95rem, 3.2vw, 1.1rem)',
+                background: c.background,
+                padding: isMobile ? '14px' : 'clamp(16px, 4vw, 20px)',
+                borderRadius: '10px',
+                border: `1px solid ${c.border}`,
+                margin: 0,
+                textAlign: isMobile ? 'center' : 'left'
+              }}>
+                {product.description}
+              </p>
+            </div>
+
+            {/* Action Buttons */}
             <div style={{ 
               display: 'flex', 
-              flexWrap: 'wrap', 
-              gap: 'clamp(6px, 1.5vw, 8px)' 
+              gap: isMobile ? '10px' : 'clamp(12px, 3vw, 16px)',
+              flexDirection: isMobile ? 'column' : 'row',
+              flexWrap: 'wrap' 
             }}>
-              {product.flavors.map((flavor, index) => (
-                <span key={index} style={{
-                  background: c.background,
-                  padding: 'clamp(8px, 2vw, 10px) clamp(14px, 3vw, 18px)',
-                  borderRadius: '20px',
-                  fontSize: 'clamp(0.85rem, 2.5vw, 0.95rem)',
-                  color: c.textDark,
-                  border: `1px solid ${c.border}`,
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                  cursor: 'default'
+              <button
+                onClick={handleAddToCart}
+                style={{
+                  flex: isMobile ? 'none' : 1,
+                  width: isMobile ? '100%' : 'auto',
+                  minWidth: isMobile ? 'auto' : 'clamp(180px, 45vw, 220px)',
+                  padding: isMobile ? '14px 20px' : 'clamp(14px, 3.5vw, 20px) clamp(24px, 5vw, 32px)',
+                  background: `linear-gradient(135deg, ${c.success} 0%, #7CB342 100%)`,
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: isMobile ? '10px' : 'clamp(8px, 2vw, 12px)',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  fontSize: isMobile ? '1rem' : 'clamp(1rem, 3.5vw, 1.2rem)',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: '0 6px 20px rgba(139, 195, 74, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px'
                 }}
                 onMouseEnter={(e) => {
-                  if (window.innerWidth >= 768) {
-                    e.currentTarget.style.background = c.secondary
-                    e.currentTarget.style.color = '#FFFFFF'
-                    e.currentTarget.style.borderColor = c.secondary
+                  if (windowWidth >= 768) {
+                    e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)'
+                    e.currentTarget.style.boxShadow = '0 10px 30px rgba(139, 195, 74, 0.5)'
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (window.innerWidth >= 768) {
-                    e.currentTarget.style.background = c.background
-                    e.currentTarget.style.color = c.textDark
-                    e.currentTarget.style.borderColor = c.border
+                  if (windowWidth >= 768) {
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(139, 195, 74, 0.4)'
                   }
                 }}
-                >
-                  {flavor}
-                </span>
-              ))}
+                onTouchStart={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.96)'
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                }}
+              >
+                <span style={{ fontSize: '1.3rem' }}>✓</span>
+                {t('addToCart')}
+              </button>
+              
+              <button
+                onClick={() => navigate('/cart')}
+                style={{
+                  width: isMobile ? '100%' : 'auto',
+                  padding: isMobile ? '14px 20px' : 'clamp(14px, 3.5vw, 20px) clamp(24px, 5vw, 32px)',
+                  backgroundColor: 'transparent',
+                  color: c.primary,
+                  border: `2px solid ${c.primary}`,
+                  borderRadius: isMobile ? '10px' : 'clamp(8px, 2vw, 12px)',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  fontSize: isMobile ? '1rem' : 'clamp(1rem, 3.5vw, 1.2rem)',
+                  transition: 'all 0.3s ease',
+                  minWidth: isMobile ? 'auto' : 'clamp(140px, 35vw, 170px)',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+                onMouseEnter={(e) => {
+                  if (windowWidth >= 768) {
+                    e.currentTarget.style.backgroundColor = c.primary
+                    e.currentTarget.style.color = theme === 'light' ? '#FFFFFF' : c.textDark
+                    e.currentTarget.style.transform = 'translateY(-4px)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (windowWidth >= 768) {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.color = c.primary
+                    e.currentTarget.style.transform = 'translateY(0)'
+                  }
+                }}
+                onTouchStart={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.95)'
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                }}
+              >
+                🛒 {t('goToCart')}
+              </button>
             </div>
-          </div>
-
-          <div style={{ marginBottom: 'clamp(24px, 5vw, 32px)' }}>
-            <p style={{ 
-              fontWeight: '600', 
-              color: c.textDark, 
-              marginBottom: 'clamp(10px, 2vw, 12px)',
-              fontSize: 'clamp(0.95rem, 3vw, 1.1rem)' 
-            }}>
-              <strong>{t('description')}:</strong>
-            </p>
-            <p style={{ 
-              color: c.textLight, 
-              lineHeight: 1.8, 
-              fontSize: 'clamp(0.9rem, 3vw, 1.05rem)' 
-            }}>
-              {product.description}
-            </p>
-          </div>
-
-          <div style={{ 
-            display: 'flex', 
-            gap: 'clamp(10px, 2vw, 12px)',
-            flexWrap: 'wrap' 
-          }}>
-            <button
-              onClick={handleAddToCart}
-              style={{
-                flex: 1,
-                minWidth: 'clamp(150px, 40vw, 200px)',
-                padding: 'clamp(12px, 3vw, 16px) clamp(20px, 4vw, 24px)',
-                backgroundColor: c.success,
-                color: 'white',
-                border: 'none',
-                borderRadius: 'clamp(6px, 1.5vw, 8px)',
-                fontWeight: '700',
-                cursor: 'pointer',
-                fontSize: 'clamp(0.9rem, 3vw, 1.05rem)',
-                transition: 'all 0.3s ease',
-                boxShadow: '0 4px 12px rgba(139, 195, 74, 0.3)'
-              }}
-              onMouseEnter={(e) => {
-                if (window.innerWidth >= 768) {
-                  e.currentTarget.style.backgroundColor = '#7CB342'
-                  e.currentTarget.style.transform = 'translateY(-2px)'
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(139, 195, 74, 0.4)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (window.innerWidth >= 768) {
-                  e.currentTarget.style.backgroundColor = c.success
-                  e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(139, 195, 74, 0.3)'
-                }
-              }}
-              onTouchStart={(e) => {
-                e.currentTarget.style.opacity = '0.85'
-              }}
-              onTouchEnd={(e) => {
-                e.currentTarget.style.opacity = '1'
-              }}
-            >
-              ✓ {t('addToCart')}
-            </button>
-            
-            <button
-              onClick={() => navigate('/cart')}
-              style={{
-                padding: 'clamp(12px, 3vw, 16px) clamp(20px, 4vw, 24px)',
-                backgroundColor: 'transparent',
-                color: c.primary,
-                border: `2px solid ${c.primary}`,
-                borderRadius: 'clamp(6px, 1.5vw, 8px)',
-                fontWeight: '700',
-                cursor: 'pointer',
-                fontSize: 'clamp(0.9rem, 3vw, 1.05rem)',
-                transition: 'all 0.3s ease',
-                minWidth: 'clamp(120px, 30vw, 150px)',
-                whiteSpace: 'nowrap'
-              }}
-              onMouseEnter={(e) => {
-                if (window.innerWidth >= 768) {
-                  e.currentTarget.style.backgroundColor = c.primary
-                  e.currentTarget.style.color = theme === 'light' ? '#FFFFFF' : c.textDark
-                  e.currentTarget.style.transform = 'translateY(-2px)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (window.innerWidth >= 768) {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                  e.currentTarget.style.color = c.primary
-                  e.currentTarget.style.transform = 'translateY(0)'
-                }
-              }}
-              onTouchStart={(e) => {
-                e.currentTarget.style.opacity = '0.7'
-              }}
-              onTouchEnd={(e) => {
-                e.currentTarget.style.opacity = '1'
-              }}
-            >
-              🛒 {t('goToCart')}
-            </button>
           </div>
         </div>
       </div>
+
+      {/* Animations */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-15px); }
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 1; }
+        }
+
+        @keyframes badgeGlow {
+          0%, 100% {
+            box-shadow: 0 6px 20px rgba(212, 160, 23, 0.6);
+          }
+          50% {
+            box-shadow: 0 8px 30px rgba(212, 160, 23, 0.8);
+          }
+        }
+
+        @keyframes slideInBounce {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-50px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
+        }
+
+        @keyframes slideOut {
+          to {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-30px);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

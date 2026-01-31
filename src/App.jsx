@@ -3,7 +3,9 @@ import { Routes, Route } from 'react-router-dom'
 import Splash from './pages/Splash'
 import Home from './pages/Home'
 import CartPage from './pages/CartPage' // 👈 new import
-import ProductDetail from './pages/ProductDetail' // 👈 new
+import ProductDetail from './pages/ProductDetail'
+import AboutUs from './pages/AboutUs' // 👈 Add this import
+ // 👈 new
 
 
 function App() {
@@ -13,6 +15,8 @@ function App() {
       <Route path="/home" element={<Home />} />
       <Route path="/cart" element={<CartPage />} /> {/* 👈 new route */}
       <Route path="/product/:id" element={<ProductDetail />} /> {/* 👈 new */}
+      <Route path="/about" element={<AboutUs />} /> {/* 👈 Add this route */}
+
 
     </Routes>
   )

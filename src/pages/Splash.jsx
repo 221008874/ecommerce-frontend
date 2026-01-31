@@ -1,14 +1,16 @@
 // src/pages/Splash.jsx
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTheme } from '../context/ThemeContext'
 
 export default function Splash() {
   const navigate = useNavigate()
+  const { getImage } = useTheme()
 
   useEffect(() => {
     const timer = setTimeout(() => {
       navigate('/home')
-    }, 2500)
+    }, 3000)
     return () => clearTimeout(timer)
   }, [navigate])
 
@@ -19,11 +21,19 @@ export default function Splash() {
       justifyContent: 'center',
       alignItems: 'center',
       height: '100vh',
-      background: 'linear-gradient(135deg, #3E2723 0%, #5D4037 50%, #2E1B1B 100%)',
+      background: 'linear-gradient(135deg, #2E1B1B 0%, #3E2723 25%, #5D4037 50%, #3E2723 75%, #2E1B1B 100%)',
       position: 'relative',
       overflow: 'hidden',
       padding: 'clamp(16px, 4vw, 24px)'
     }}>
+      {/* Animated gradient overlay */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'radial-gradient(circle at 50% 50%, rgba(212, 160, 23, 0.1) 0%, transparent 70%)',
+        animation: 'gradientShift 8s ease-in-out infinite'
+      }}></div>
+
       {/* Animated background circles */}
       <div style={{
         position: 'absolute',
@@ -31,10 +41,10 @@ export default function Splash() {
         left: '-10%',
         width: 'clamp(300px, 60vw, 500px)',
         height: 'clamp(300px, 60vw, 500px)',
-        background: 'radial-gradient(circle, rgba(212, 160, 23, 0.2) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(212, 160, 23, 0.25) 0%, transparent 70%)',
         borderRadius: '50%',
         filter: 'blur(clamp(60px, 15vw, 80px))',
-        animation: 'pulse 4s ease-in-out infinite'
+        animation: 'pulse 4s ease-in-out infinite, drift 20s ease-in-out infinite'
       }}></div>
       
       <div style={{
@@ -43,10 +53,10 @@ export default function Splash() {
         right: '-10%',
         width: 'clamp(350px, 70vw, 600px)',
         height: 'clamp(350px, 70vw, 600px)',
-        background: 'radial-gradient(circle, rgba(232, 221, 212, 0.15) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(232, 221, 212, 0.2) 0%, transparent 70%)',
         borderRadius: '50%',
         filter: 'blur(clamp(70px, 18vw, 100px))',
-        animation: 'pulse 5s ease-in-out infinite reverse'
+        animation: 'pulse 5s ease-in-out infinite reverse, drift 25s ease-in-out infinite reverse'
       }}></div>
 
       <div style={{
@@ -55,116 +65,334 @@ export default function Splash() {
         left: '50%',
         width: 'clamp(250px, 50vw, 400px)',
         height: 'clamp(250px, 50vw, 400px)',
-        background: 'radial-gradient(circle, rgba(93, 64, 55, 0.25) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(93, 64, 55, 0.3) 0%, transparent 70%)',
         borderRadius: '50%',
         filter: 'blur(clamp(50px, 12vw, 60px))',
-        animation: 'pulse 3.5s ease-in-out infinite',
+        animation: 'pulse 3.5s ease-in-out infinite, drift 15s ease-in-out infinite',
         transform: 'translate(-50%, -50%)'
       }}></div>
 
-      {/* Chocolate Icon with Animation */}
-      <div style={{
-        fontSize: 'clamp(4rem, 15vw, 6rem)',
-        marginBottom: 'clamp(24px, 6vw, 32px)',
-        animation: 'slideUp 0.8s ease-out, float 3s ease-in-out infinite',
-        filter: 'drop-shadow(0 10px 30px rgba(212, 160, 23, 0.4))',
-        position: 'relative',
-        zIndex: 10
-      }}>
-        🍫
-      </div>
-
-      {/* App Name with Gradient */}
-      <h1 style={{
-        fontSize: 'clamp(2.5rem, 10vw, 4rem)',
-        fontWeight: '800',
-        background: 'linear-gradient(135deg, #D4A017 0%, #E8A93C 50%, #F5C561 100%)',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        backgroundClip: 'text',
-        marginBottom: 'clamp(12px, 3vw, 16px)',
-        letterSpacing: '-2px',
-        animation: 'slideUp 0.8s ease-out 0.2s backwards',
-        textShadow: '0 4px 20px rgba(212, 160, 23, 0.3)',
-        position: 'relative',
-        zIndex: 10,
-        textAlign: 'center'
-      }}>
-        ShopEasy
-      </h1>
-
-      {/* Tagline */}
-      <p style={{
-        fontSize: 'clamp(1rem, 4vw, 1.4rem)',
-        color: '#F8F4F0',
-        marginBottom: 'clamp(32px, 8vw, 48px)',
-        animation: 'slideUp 0.8s ease-out 0.4s backwards',
-        fontWeight: '500',
-        letterSpacing: '1px',
-        textShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
-        position: 'relative',
-        zIndex: 10,
-        textAlign: 'center',
-        padding: '0 clamp(16px, 4vw, 24px)'
-      }}>
-        Your Premium Chocolate Experience
-      </p>
-
-      {/* Loading Spinner */}
-      <div style={{
-        width: 'clamp(50px, 12vw, 60px)',
-        height: 'clamp(50px, 12vw, 60px)',
-        border: '5px solid rgba(212, 160, 23, 0.2)',
-        borderTop: '5px solid #D4A017',
-        borderRadius: '50%',
-        animation: 'spin 1s linear infinite, slideUp 0.8s ease-out 0.6s backwards',
-        boxShadow: '0 0 20px rgba(212, 160, 23, 0.3)',
-        position: 'relative',
-        zIndex: 10
-      }}></div>
-
-      {/* Decorative Elements */}
+      {/* Sparkle effects */}
       <div style={{
         position: 'absolute',
-        bottom: 'clamp(30px, 8vw, 40px)',
+        top: '20%',
+        right: '15%',
+        fontSize: 'clamp(1rem, 3vw, 1.5rem)',
+        animation: 'sparkle 2s ease-in-out infinite, float 3s ease-in-out infinite',
+        opacity: 0.8
+      }}>✨</div>
+      
+      <div style={{
+        position: 'absolute',
+        bottom: '25%',
+        left: '10%',
+        fontSize: 'clamp(0.8rem, 2.5vw, 1.2rem)',
+        animation: 'sparkle 2.5s ease-in-out infinite 0.5s, float 3.5s ease-in-out infinite',
+        opacity: 0.7
+      }}>✨</div>
+      
+      <div style={{
+        position: 'absolute',
+        top: '40%',
+        left: '20%',
+        fontSize: 'clamp(0.7rem, 2vw, 1rem)',
+        animation: 'sparkle 3s ease-in-out infinite 1s, float 4s ease-in-out infinite',
+        opacity: 0.6
+      }}>✨</div>
+
+      {/* Main Content Container */}
+      <div style={{
+        position: 'relative',
+        zIndex: 10,
         display: 'flex',
-        gap: 'clamp(8px, 2vw, 12px)',
-        animation: 'fadeIn 1.5s ease-out',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 'clamp(16px, 4vw, 24px)'
+      }}>
+        {/* Logo with enhanced animation */}
+        <div style={{
+          animation: 'logoEntrance 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) backwards',
+          filter: 'drop-shadow(0 15px 35px rgba(212, 160, 23, 0.5))',
+          position: 'relative'
+        }}>
+          <img 
+            src={getImage('logo')} 
+            alt="Louable Logo" 
+            style={{ 
+              height: 'clamp(150px, 30vh, 280px)',
+              width: 'auto',
+              maxWidth: '90vw',
+              objectFit: 'contain',
+              animation: 'floatGentle 4s ease-in-out infinite'
+            }} 
+          />
+          
+          {/* Glow effect behind logo */}
+          <div style={{
+            position: 'absolute',
+            inset: '-20%',
+            background: 'radial-gradient(circle, rgba(212, 160, 23, 0.3) 0%, transparent 60%)',
+            filter: 'blur(30px)',
+            animation: 'glow 2s ease-in-out infinite',
+            zIndex: -1
+          }}></div>
+        </div>
+
+        {/* Brand Name with enhanced styling */}
+        <h1 style={{
+          fontSize: 'clamp(2.5rem, 10vw, 4.5rem)',
+          fontWeight: '800',
+          background: 'linear-gradient(135deg, #FFD700 0%, #D4A017 25%, #F5C561 50%, #D4A017 75%, #FFD700 100%)',
+          backgroundSize: '200% auto',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          marginBottom: 'clamp(8px, 2vw, 12px)',
+          letterSpacing: 'clamp(-2px, -0.5vw, -3px)',
+          animation: 'slideUp 0.8s ease-out 0.3s backwards, shimmer 3s linear infinite',
+          textShadow: '0 4px 20px rgba(212, 160, 23, 0.4)',
+          textAlign: 'center',
+          fontFamily: 'Georgia, serif'
+        }}>
+          Louable
+        </h1>
+
+        {/* Decorative line */}
+        <div style={{
+          width: 'clamp(80px, 20vw, 120px)',
+          height: '3px',
+          background: 'linear-gradient(90deg, transparent, #D4A017, transparent)',
+          animation: 'expandWidth 1s ease-out 0.5s backwards',
+          borderRadius: '2px'
+        }}></div>
+
+        {/* Tagline with typewriter effect */}
+        <p style={{
+          fontSize: 'clamp(1rem, 4vw, 1.5rem)',
+          color: '#F8F4F0',
+          marginBottom: 'clamp(24px, 6vw, 40px)',
+          animation: 'slideUp 0.8s ease-out 0.6s backwards',
+          fontWeight: '500',
+          letterSpacing: 'clamp(0.5px, 0.2vw, 1.5px)',
+          textShadow: '0 2px 15px rgba(0, 0, 0, 0.4)',
+          textAlign: 'center',
+          padding: '0 clamp(16px, 4vw, 24px)',
+          fontFamily: 'Georgia, serif',
+          fontStyle: 'italic'
+        }}>
+          Your Premium Chocolate Experience
+        </p>
+
+        {/* Enhanced Loading Spinner */}
+        <div style={{
+          position: 'relative',
+          width: 'clamp(60px, 14vw, 70px)',
+          height: 'clamp(60px, 14vw, 70px)',
+          animation: 'slideUp 0.8s ease-out 0.8s backwards'
+        }}>
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            border: '5px solid rgba(212, 160, 23, 0.15)',
+            borderRadius: '50%',
+            boxShadow: 'inset 0 0 20px rgba(212, 160, 23, 0.1)'
+          }}></div>
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            border: '5px solid transparent',
+            borderTopColor: '#D4A017',
+            borderRightColor: '#D4A017',
+            borderRadius: '50%',
+            animation: 'spin 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite',
+            boxShadow: '0 0 25px rgba(212, 160, 23, 0.4)'
+          }}></div>
+          <div style={{
+            position: 'absolute',
+            inset: '10px',
+            border: '3px solid transparent',
+            borderTopColor: '#F5C561',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite reverse',
+            opacity: 0.7
+          }}></div>
+        </div>
+
+        {/* Loading text */}
+        <p style={{
+          fontSize: 'clamp(0.85rem, 2.5vw, 1rem)',
+          color: 'rgba(248, 244, 240, 0.8)',
+          animation: 'pulse 1.5s ease-in-out infinite, slideUp 0.8s ease-out 1s backwards',
+          fontWeight: '600',
+          letterSpacing: '2px',
+          textTransform: 'uppercase'
+        }}>
+          Loading...
+        </p>
+      </div>
+
+      {/* Bottom decorative elements */}
+      <div style={{
+        position: 'absolute',
+        bottom: 'clamp(40px, 10vw, 60px)',
+        display: 'flex',
+        gap: 'clamp(10px, 2.5vw, 16px)',
+        animation: 'fadeIn 1.5s ease-out 1.2s backwards',
         zIndex: 10
       }}>
         <div style={{
-          width: 'clamp(30px, 8vw, 40px)',
-          height: '4px',
-          background: 'rgba(212, 160, 23, 0.6)',
-          borderRadius: '2px',
-          animation: 'expandWidth 1s ease-out 1s backwards'
+          width: 'clamp(35px, 9vw, 50px)',
+          height: '5px',
+          background: 'linear-gradient(90deg, transparent, rgba(212, 160, 23, 0.6))',
+          borderRadius: '3px',
+          animation: 'expandWidth 1s ease-out 1.5s backwards, pulse 2s ease-in-out infinite'
         }}></div>
         <div style={{
-          width: 'clamp(45px, 12vw, 60px)',
-          height: '4px',
-          background: 'rgba(212, 160, 23, 0.8)',
-          borderRadius: '2px',
-          animation: 'expandWidth 1s ease-out 1.1s backwards'
+          width: 'clamp(50px, 13vw, 70px)',
+          height: '5px',
+          background: 'linear-gradient(90deg, rgba(212, 160, 23, 0.6), rgba(212, 160, 23, 0.9), rgba(212, 160, 23, 0.6))',
+          borderRadius: '3px',
+          animation: 'expandWidth 1s ease-out 1.6s backwards, pulse 2s ease-in-out infinite 0.3s'
         }}></div>
         <div style={{
-          width: 'clamp(30px, 8vw, 40px)',
-          height: '4px',
-          background: 'rgba(212, 160, 23, 0.6)',
-          borderRadius: '2px',
-          animation: 'expandWidth 1s ease-out 1.2s backwards'
+          width: 'clamp(35px, 9vw, 50px)',
+          height: '5px',
+          background: 'linear-gradient(90deg, rgba(212, 160, 23, 0.6), transparent)',
+          borderRadius: '3px',
+          animation: 'expandWidth 1s ease-out 1.7s backwards, pulse 2s ease-in-out infinite 0.6s'
         }}></div>
       </div>
 
-      {/* Additional Animations */}
+      {/* Animations */}
       <style>{`
+        @keyframes logoEntrance {
+          0% {
+            opacity: 0;
+            transform: scale(0.3) rotate(-10deg);
+          }
+          70% {
+            transform: scale(1.1) rotate(5deg);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+          }
+        }
+
+        @keyframes floatGentle {
+          0%, 100% { 
+            transform: translateY(0px) rotate(0deg); 
+          }
+          50% { 
+            transform: translateY(-15px) rotate(2deg); 
+          }
+        }
+
+        @keyframes shimmer {
+          0% {
+            background-position: 0% center;
+          }
+          100% {
+            background-position: 200% center;
+          }
+        }
+
+        @keyframes glow {
+          0%, 100% {
+            opacity: 0.5;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.1);
+          }
+        }
+
+        @keyframes sparkle {
+          0%, 100% {
+            opacity: 0;
+            transform: scale(0) rotate(0deg);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1) rotate(180deg);
+          }
+        }
+
         @keyframes float {
           0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-15px); }
+          50% { transform: translateY(-20px); }
+        }
+
+        @keyframes drift {
+          0%, 100% {
+            transform: translate(0, 0);
+          }
+          33% {
+            transform: translate(30px, -30px);
+          }
+          66% {
+            transform: translate(-30px, 30px);
+          }
+        }
+
+        @keyframes gradientShift {
+          0%, 100% {
+            opacity: 0.5;
+          }
+          50% {
+            opacity: 1;
+          }
         }
         
         @keyframes expandWidth {
-          from { width: 0; opacity: 0; }
-          to { opacity: 1; }
+          from { 
+            width: 0; 
+            opacity: 0; 
+          }
+          to { 
+            opacity: 1; 
+          }
+        }
+
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(0.98);
+          }
+        }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
         }
       `}</style>
     </div>

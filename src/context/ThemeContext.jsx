@@ -12,6 +12,7 @@ export function ThemeProvider({ children }) {
   const [themeImages, setThemeImages] = useState({
     logo: logoLight, // default
   })
+  
 
   // Theme-specific images
   const imagePaths = {
