@@ -45,7 +45,22 @@ const translations = {
     visionDescription: 'أن نكون العلامة التجارية الرائدة للشوكولاتة الفاخرة في الشرق الأوسط، مع الحفاظ على أعلى معايير الجودة والاستدامة.',
     ourValues: 'قيمنا',
     valuesDescription: 'الجودة، الأصالة، الابتكار، والاستدامة هي قيمنا الأساسية التي نبني عليها كل ما نقوم به.',
-    backToHome: 'العودة إلى الرئيسية'
+    backToHome: 'العودة إلى الرئيسية',
+     privacyPolicy: 'سياسة الخصوصية',
+  lastUpdated: 'آخر تحديث',
+  informationWeCollect: 'المعلومات التي نجمعها',
+  infoCollectionText: 'نقوم بجمع معلوماتك عند استخدامك لتطبيقنا، مثل اسم المنتجات المضافة إلى سلة التسوق وتفاصيل الطلب. لا نقوم بجمع أي معلومات شخصية حساسة.',
+  howWeUseInfo: 'كيف نستخدم معلوماتك',
+  useInfoText: 'نستخدم المعلومات التي نجمعها لتحسين تجربتك في الشراء، وعرض المنتجات ذات الصلة، وتقديم دعم فني.',
+  dataSharing: 'مشاركة البيانات',
+  dataSharingText: 'نحن لا نشارك بياناتك مع أي أطراف ثالثة. جميع المعلومات تُخزن بشكل آمن في قواعد بيانات Firebase الخاصة بنا.',
+  dataSecurity: 'أمن البيانات',
+  securityText: 'نستخدم أفضل ممارسات الأمان لحماية بياناتك من الوصول غير المصرح به أو التعديل أو الإفصاح أو التدمير.',
+  yourRights: 'حقوقك',
+  rightsText: 'لديك الحق في طلب حذف بياناتك أو تصحيحها في أي وقت عن طريق التواصل معنا.',
+  contactUs: 'اتصل بنا',
+  contactPrivacyText: 'لأي استفسارات حول سياسة الخصوصية، يرجى مراسلتنا على: louablefactory@gmail.com',
+  backToHome: 'العودة إلى الرئيسية'
   },
   en: {
     appName: 'ShopEasy',
@@ -89,7 +104,22 @@ const translations = {
     visionDescription: 'To become the leading luxury chocolate brand in the Middle East, while maintaining the highest standards of quality and sustainability.',
     ourValues: 'Our Values',
     valuesDescription: 'Quality, authenticity, innovation, and sustainability are our core values that guide everything we do.',
-    backToHome: 'Back to Home'
+    backToHome: 'Back to Home',
+      privacyPolicy: 'Privacy Policy',
+  lastUpdated: 'Last Updated',
+  informationWeCollect: 'Information We Collect',
+  infoCollectionText: 'We collect information when you use our app, such as products added to your cart and order details. We do not collect any sensitive personal information.',
+  howWeUseInfo: 'How We Use Your Information',
+  useInfoText: 'We use the collected information to improve your shopping experience, show relevant products, and provide technical support.',
+  dataSharing: 'Data Sharing',
+  dataSharingText: 'We do not share your data with any third parties. All information is securely stored in our Firebase databases.',
+  dataSecurity: 'Data Security',
+  securityText: 'We follow industry best practices to protect your data from unauthorized access, alteration, disclosure, or destruction.',
+  yourRights: 'Your Rights',
+  rightsText: 'You have the right to request deletion or correction of your data at any time by contacting us.',
+  contactUs: 'Contact Us',
+  contactPrivacyText: 'For any questions about this Privacy Policy, please email us at: louablefactory@gmail.com',
+  backToHome: 'Back to Home'
   }
 }
 

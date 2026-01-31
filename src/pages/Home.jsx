@@ -747,7 +747,7 @@ export default function Home() {
             >
               {[
                 { key: 'home', label: t('home'), path: '/home' },
-                { key: 'products', label: t('products'), path: '/home' },
+                { key: 'privacy', label: t('privacy'), path: '/privacy' },
                 { key: 'aboutUs', label: t('aboutUs'), path: '/about' },
                 { key: 'contact', label: t('contact'), path: '#' }
               ].map((link) => (

@@ -6,6 +6,7 @@ import CartPage from './pages/CartPage' // 👈 new import
 import ProductDetail from './pages/ProductDetail'
 import AboutUs from './pages/AboutUs' // 👈 Add this import
  // 👈 new
+import PrivacyPolicy from './pages/PrivacyPolicy' // 👈 Add import
 
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
       <Route path="/home" element={<Home />} />
       <Route path="/cart" element={<CartPage />} /> {/* 👈 new route */}
       <Route path="/product/:id" element={<ProductDetail />} /> {/* 👈 new */}
+      <Route path="/privacy" element={<PrivacyPolicy />} /> {/* 👈 Add this */}
       <Route path="/about" element={<AboutUs />} /> {/* 👈 Add this route */}
 
 
