@@ -13,39 +13,43 @@ export default function CartPage() {
   const navigate = useNavigate()
   
 const handleCheckout = async () => {
+  if (typeof window.Pi === 'undefined') {
+    alert("Please open this app in Pi Browser");
+    return;
+  }
+
   try {
-    // Get user's Pi address (from Pi Browser context)
-    const userAddress = await PiNetwork.getWalletAddress()
+    const userAddress = await window.Pi.getWalletAddress();
     
-    if (!userAddress) {
-      alert("Please log in with Pi Browser")
-      return
-    }
+    // Call your Vercel function
+    const response = await fetch('/api/pi/create-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: "1.0",
+        recipient: userAddress,
+        memo: "Chocolate order test"
+      })
+    });
 
-    // Create payment (1 Testnet Pi)
-    const payment = await PiNetwork.createPayment({
-      amount: "1.0", // Testnet Pi (no real value)
-      memo: "Chocolate order test",
-      recipient: userAddress,
-      metadata: { 
-        purpose: "test_transaction",
-        cartItems: items.map(i => i.id).join(",")
+    const data = await response.json();
+    
+    if (data.paymentId) {
+      const approval = await window.Pi.approvePayment(data.paymentId);
+      if (approval) {
+        await fetch('/api/pi/submit-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentId: data.paymentId })
+        });
+        alert("✅ Transaction completed!");
       }
-    })
-
-    // Submit payment
-    const result = await PiNetwork.submitPayment(payment)
-    
-    if (result.status === 'COMPLETED') {
-      alert("✅ Test transaction successful! Thank you!")
-      // Optional: Clear cart
-      // items.forEach(item => removeFromCart(item.id))
     }
   } catch (error) {
-    console.error("Payment failed:", error)
-    alert("❌ Transaction failed. Please try again.")
+    console.error(error);
+    alert("❌ Transaction failed");
   }
-}
+};
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1024
   )
@@ -703,7 +707,7 @@ const handleCheckout = async () => {
           </div>
 
           <button
-            onClick={() => alert('Checkout not implemented yet')}
+            onClick={() => handleCheckout}
             style={{
               width: '100%',
               padding: isMobile ? '14px' : 'clamp(14px, 3.5vw, 20px)',
