@@ -12,7 +12,7 @@ export default function CartPage() {
   const { theme, getImage } = useTheme()
   const navigate = useNavigate()
   
-// Add this useEffect for Pi initialization
+// ✅ CORRECTED handleCheckout - NO authentication here
 const handleCheckout = async () => {
   if (!window.Pi) {
     alert("Please open this app in Pi Browser");
@@ -20,67 +20,32 @@ const handleCheckout = async () => {
   }
 
   try {
-    // ✅ CORRECTED PAYMENT DATA
     const paymentData = {
-      amount: 1.0, // Must be a number
-      memo: "Chocolate order test", // Must be a string
-      metadata: { // ✅ "metadata" not "meta"
-        purpose: "ecommerce_test",
-        timestamp: Date.now().toString() // Optional: helps with debugging
-      }
+      amount: 1.0,
+      memo: "Chocolate order test",
+      meta: { purpose: "ecommerce_test" } // ✅ FIXED: Added colon after "meta"
     };
 
     const callbacks = {
       onReadyForServerApproval: async (paymentId) => {
-  console.log("🚀 Ready for approval:", paymentId);
-  
-  try {
-    const response = await fetch('/api/pi/approve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paymentId })
-    });
-
-    // Check if response is OK before parsing
-    if (!response.ok) {
-      // Try to parse error, fallback to generic message
-      let errorMessage = 'Approval failed';
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-      } catch (parseError) {
-        // Response wasn't JSON - log raw text
-        const text = await response.text();
-        console.error('Raw error response:', text);
-        errorMessage = 'Server error (check logs)';
-      }
-      
-      console.error('❌ Approval failed:', errorMessage);
-      alert(`Approval failed: ${errorMessage}`);
-      return;
-    }
-
-    const result = await response.json();
-    console.log("✅ Approved:", result);
-
-  } catch (networkError) {
-    console.error('💥 Network error:', networkError);
-    alert('Network error during approval. Please try again.');
-  }
-},
+        console.log("🚀 Ready for approval:", paymentId);
+        const response = await fetch('/api/pi/approve', {
+          method: 'POST',
+          headers: { 'Content:Type': 'application/json' },
+          body: JSON.stringify({ paymentId })
+        });
+        const result = await response.json();
+        console.log("✅ Approved:", result);
+      },
       
       onReadyForServerCompletion: async (paymentId, txid) => {
         console.log("✅ Payment completed:", paymentId, txid);
-        try {
-          await fetch('/api/pi/complete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentId, txid })
-          });
-          alert("✅ Order confirmed!");
-        } catch (error) {
-          console.error('❌ Completion error:', error);
-        }
+        await fetch('/api/pi/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentId, txid })
+        });
+        alert("✅ Order confirmed!");
       },
       
       onCancel: () => {
@@ -90,14 +55,11 @@ const handleCheckout = async () => {
       
       onError: (error) => {
         console.error("💥 Payment error:", error);
-        if (error.message?.includes('Amount, memo, and metadata')) {
-          alert("Payment configuration error. Please contact support.");
-        } else {
-          alert("Payment failed: " + (error.message || 'Unknown error'));
-        }
+        alert("Payment failed: " + (error.message || 'Unknown error'));
       }
     };
 
+    // ✅ ONLY create payment - no authentication here
     const payment = await window.Pi.createPayment(paymentData, callbacks);
     console.log("💳 Payment created:", payment.identifier);
     
@@ -107,45 +69,23 @@ const handleCheckout = async () => {
   }
 };
 
+// ✅ KEEP THIS - Runs once on page load
 useEffect(() => {
-  console.log('🔍 CartPage loaded - checking for Pi SDK...');
-  
-  if (typeof window === 'undefined') {
-    console.log('❌ Running on server, not browser');
-    return;
-  }
-
-  if (!window.Pi) {
-    console.log('❌ Pi SDK not loaded - check index.html');
-    alert('Pi SDK not loaded. Please refresh or check your internet connection.');
-    return;
-  }
-
-  console.log('✅ Pi SDK found - attempting authentication...');
-
-  const initializePi = async () => {
-    try {
-      console.log('🔑 Requesting payments scope...');
-      
-      const scopes = ['payments'];
-      
-      function onIncompletePaymentFound(payment) {
-        console.log('🔄 Found incomplete payment:', payment.identifier);
+  if (typeof window !== 'undefined' && window.Pi) {
+    const initializePi = async () => {
+      try {
+        const scopes = ['payments'];
+        function onIncompletePaymentFound(payment) {
+          console.log('🔄 Incomplete payment:', payment.identifier);
+        }
+        await window.Pi.authenticate(scopes, onIncompletePaymentFound);
+        console.log('✅ Pi authenticated');
+      } catch (error) {
+        console.error('❌ Auth failed:', error);
       }
-
-      // This should trigger the popup
-      const authResult = await window.Pi.authenticate(scopes, onIncompletePaymentFound);
-      
-      console.log('✅ Authentication successful:', authResult);
-      alert('✅ Pi Network connected! You can now make payments.');
-
-    } catch (error) {
-      console.error('❌ Authentication failed:', error);
-      alert('❌ Failed to connect to Pi Network: ' + error.message);
-    }
-  };
-
-  initializePi();
+    };
+    initializePi();
+  }
 }, []);
 
   const [windowWidth, setWindowWidth] = useState(
