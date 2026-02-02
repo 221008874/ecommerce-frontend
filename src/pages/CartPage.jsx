@@ -20,34 +20,67 @@ const handleCheckout = async () => {
   }
 
   try {
+    // ✅ CORRECTED PAYMENT DATA
     const paymentData = {
-      amount: 1.0,
-      memo: "Chocolate order test",
-      meta: { purpose: "ecommerce_test" } // ✅ FIXED: Added colon after "meta"
+      amount: 1.0, // Must be a number
+      memo: "Chocolate order test", // Must be a string
+      metadata: { // ✅ "metadata" not "meta"
+        purpose: "ecommerce_test",
+        timestamp: Date.now().toString() // Optional: helps with debugging
+      }
     };
 
     const callbacks = {
       onReadyForServerApproval: async (paymentId) => {
-        console.log("🚀 Ready for approval:", paymentId);
-        // Call your Vercel backend to approve
-        const response = await fetch('/api/pi/approve', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ paymentId })
-        });
-        const result = await response.json();
-        console.log("✅ Approved:", result);
-      },
+  console.log("🚀 Ready for approval:", paymentId);
+  
+  try {
+    const response = await fetch('/api/pi/approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentId })
+    });
+
+    // Check if response is OK before parsing
+    if (!response.ok) {
+      // Try to parse error, fallback to generic message
+      let errorMessage = 'Approval failed';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (parseError) {
+        // Response wasn't JSON - log raw text
+        const text = await response.text();
+        console.error('Raw error response:', text);
+        errorMessage = 'Server error (check logs)';
+      }
+      
+      console.error('❌ Approval failed:', errorMessage);
+      alert(`Approval failed: ${errorMessage}`);
+      return;
+    }
+
+    const result = await response.json();
+    console.log("✅ Approved:", result);
+
+  } catch (networkError) {
+    console.error('💥 Network error:', networkError);
+    alert('Network error during approval. Please try again.');
+  }
+},
       
       onReadyForServerCompletion: async (paymentId, txid) => {
         console.log("✅ Payment completed:", paymentId, txid);
-        // Finalize order
-        await fetch('/api/pi/complete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ paymentId, txid })
-        });
-        alert("✅ Order confirmed!");
+        try {
+          await fetch('/api/pi/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentId, txid })
+          });
+          alert("✅ Order confirmed!");
+        } catch (error) {
+          console.error('❌ Completion error:', error);
+        }
       },
       
       onCancel: () => {
@@ -57,13 +90,17 @@ const handleCheckout = async () => {
       
       onError: (error) => {
         console.error("💥 Payment error:", error);
-        alert("Payment failed: " + (error.message || 'Unknown error'));
+        if (error.message?.includes('Amount, memo, and metadata')) {
+          alert("Payment configuration error. Please contact support.");
+        } else {
+          alert("Payment failed: " + (error.message || 'Unknown error'));
+        }
       }
     };
 
-    // Create payment using Pi SDK
     const payment = await window.Pi.createPayment(paymentData, callbacks);
-    console.log("💳 Payment created:", payment);
+    console.log("💳 Payment created:", payment.identifier);
+    
   } catch (error) {
     console.error("🔥 Checkout error:", error);
     alert("Checkout failed: " + (error.message || 'Please try again'));
