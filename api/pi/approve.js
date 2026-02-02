@@ -13,16 +13,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing paymentId' });
     }
 
-    if (!process.env.PI_API_KEY) {
-      console.error('❌ PI_API_KEY missing');
-      return res.status(500).json({ error: 'Server configuration error' });
-    }
+    // 🔥 HARDCODED API KEY (temporary for testing)
+    const API_KEY = 'lclux2tuwiv6qkxoeyhh6szzrdavuq1u94tkfq01qvgngj8bclqx8ngragv6c7pf';
 
-    // ✅ CORRECT URL - NO extra spaces
     const response = await fetch(`https://api.minepi.com/v2/payments/${paymentId}/approve`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.PI_API_KEY}`,
+        'Authorization': `Bearer ${API_KEY}`,
         'Content-Type': 'application/json'
       }
     });
