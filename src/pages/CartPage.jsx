@@ -1,5 +1,5 @@
 // src/pages/CartPage.jsx
-// ✅ FIXED: Proper Pi authentication with payments scope
+// ✅ FIXED: Better error handling for approval failures
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -13,70 +13,57 @@ export default function CartPage() {
   const { theme, getImage } = useTheme()
   const navigate = useNavigate()
   
-  // ✅ NEW: Track authentication state
   const [piAuthenticated, setPiAuthenticated] = useState(false)
   const [piAuthError, setPiAuthError] = useState(null)
 
-  // ✅ FIXED: Proper Pi authentication
+  // Pi authentication
   useEffect(() => {
     const authenticatePi = async () => {
-      // Check if Pi SDK is available
       if (typeof window === 'undefined' || !window.Pi) {
-        console.warn('⚠️ Pi SDK not available - not in Pi Browser');
+        console.warn('⚠️ Pi SDK not available');
         setPiAuthError('Please open this app in Pi Browser');
         return;
       }
 
       try {
         console.log('🔐 Authenticating with Pi Network...');
-        
-        // ✅ CRITICAL: Request 'payments' scope
         const scopes = ['payments'];
         
-        // Handle incomplete payments
         const onIncompletePaymentFound = (payment) => {
-          console.log('🔄 Found incomplete payment:', payment.identifier);
-          // You can handle incomplete payments here if needed
+          console.log('🔄 Incomplete payment:', payment.identifier);
           return payment;
         };
 
-        // Authenticate with Pi
         const auth = await window.Pi.authenticate(scopes, onIncompletePaymentFound);
         
-        console.log('✅ Pi authentication successful:', auth);
-        console.log('  - User:', auth.user?.username);
-        console.log('  - Scopes:', auth.accessToken?.scopes);
-        
+        console.log('✅ Pi authenticated:', auth.user?.username);
         setPiAuthenticated(true);
         setPiAuthError(null);
         
       } catch (error) {
-        console.error('❌ Pi authentication failed:', error);
+        console.error('❌ Authentication failed:', error);
         setPiAuthError(error.message || 'Authentication failed');
         setPiAuthenticated(false);
       }
     };
 
     authenticatePi();
-  }, []); // Run once on mount
+  }, []);
 
-  // ✅ FIXED: Checkout handler that checks authentication
+  // ✅ FIXED: Better error handling in checkout
   const handleCheckout = async () => {
-    // Check Pi SDK availability
     if (!window.Pi) {
       alert("❌ Please open this app in Pi Browser");
       return;
     }
 
-    // Check if authenticated
     if (!piAuthenticated) {
-      alert("❌ Please wait for Pi authentication to complete, then try again");
-      console.error('Not authenticated yet. Auth error:', piAuthError);
+      alert("❌ Please wait for Pi authentication to complete");
       return;
     }
 
     try {
-      console.log('💳 Creating payment...');
+      console.log('💳 Starting checkout...');
       
       const paymentData = {
         amount: totalPrice,
@@ -92,38 +79,74 @@ export default function CartPage() {
 
       const callbacks = {
         onReadyForServerApproval: async (paymentId) => {
-          console.log("🚀 Ready for server approval:", paymentId);
+          console.log("🚀 Approval needed for:", paymentId);
           
           try {
+            console.log('📤 Sending approval request...');
+            
             const response = await fetch('/api/pi/approve', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              },
               body: JSON.stringify({ paymentId })
             });
             
-            const result = await response.json();
+            console.log('📥 Approval response status:', response.status);
+            console.log('📥 Content-Type:', response.headers.get('content-type'));
+            
+            // ✅ FIXED: Check content type before parsing
+            const contentType = response.headers.get('content-type') || '';
+            
+            let result;
+            if (contentType.includes('application/json')) {
+              result = await response.json();
+            } else {
+              // Response is not JSON (probably HTML error page)
+              const text = await response.text();
+              console.error('❌ Non-JSON response:', text.substring(0, 200));
+              
+              throw new Error(
+                `Server returned ${response.status}: ${text.substring(0, 100)}...`
+              );
+            }
+            
+            console.log('📥 Parsed result:', result);
             
             if (!response.ok) {
               console.error("❌ Approval failed:", result);
-              throw new Error(result.error || 'Approval failed');
+              throw new Error(result.error || result.details || 'Approval failed');
             }
             
-            console.log("✅ Server approved:", result);
+            console.log("✅ Server approved payment:", result);
             
           } catch (error) {
             console.error("💥 Approval error:", error);
-            alert("Approval failed: " + error.message);
+            
+            // More specific error messages
+            if (error.message.includes('JSON')) {
+              alert("❌ Server error: Invalid response format. Check server logs.");
+            } else if (error.message.includes('Failed to fetch')) {
+              alert("❌ Network error: Cannot reach server. Check your connection.");
+            } else {
+              alert("❌ Approval failed: " + error.message);
+            }
+            
             throw error;
           }
         },
         
         onReadyForServerCompletion: async (paymentId, txid) => {
-          console.log("✅ Ready for completion:", { paymentId, txid });
+          console.log("✅ Completing payment:", { paymentId, txid });
           
           try {
             const response = await fetch('/api/pi/complete', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              },
               body: JSON.stringify({ 
                 paymentId, 
                 txid,
@@ -136,7 +159,16 @@ export default function CartPage() {
               })
             });
             
-            const result = await response.json();
+            const contentType = response.headers.get('content-type') || '';
+            
+            let result;
+            if (contentType.includes('application/json')) {
+              result = await response.json();
+            } else {
+              const text = await response.text();
+              console.warn('⚠️ Completion returned non-JSON:', text.substring(0, 100));
+              result = { success: response.ok };
+            }
             
             if (!response.ok) {
               console.error("❌ Completion failed:", result);
@@ -144,14 +176,14 @@ export default function CartPage() {
             }
             
             console.log("✅ Order completed:", result);
-            alert("✅ Payment successful! Transaction ID: " + txid);
+            alert(`✅ Payment successful!\nTransaction ID: ${txid}\n\nThank you for your order!`);
             
-            // Optional: Clear cart or redirect
+            // Optional: Redirect or clear cart
             // navigate('/order-success');
             
           } catch (error) {
             console.error("💥 Completion error:", error);
-            alert("Payment completed but order save failed. Transaction ID: " + txid);
+            alert(`⚠️ Payment completed but order save failed.\n\nTransaction ID: ${txid}\n\nPlease save this for your records.`);
           }
         },
         
@@ -162,23 +194,33 @@ export default function CartPage() {
         
         onError: (error, payment) => {
           console.error("💥 Payment error:", error, payment);
-          alert("Payment failed: " + (error.message || 'Unknown error'));
+          
+          let errorMessage = error.message || 'Unknown error';
+          
+          if (errorMessage.includes('scope')) {
+            errorMessage = 'Authentication error. Please close and reopen the app.';
+          } else if (errorMessage.includes('network')) {
+            errorMessage = 'Network error. Please check your connection.';
+          }
+          
+          alert("❌ Payment failed: " + errorMessage);
         }
       };
 
-      // ✅ Create payment
+      // Create payment
       const payment = await window.Pi.createPayment(paymentData, callbacks);
-      console.log("💳 Payment created successfully:", payment.identifier);
+      console.log("💳 Payment created:", payment.identifier);
       
     } catch (error) {
       console.error("🔥 Checkout error:", error);
       
-      // More helpful error messages
-      if (error.message?.includes('scope')) {
-        alert("❌ Authentication error: Please close and reopen the app in Pi Browser");
-      } else {
-        alert("Checkout failed: " + (error.message || 'Please try again'));
+      let errorMessage = error.message || 'Unknown error';
+      
+      if (errorMessage.includes('scope')) {
+        errorMessage = 'Please close and reopen the app in Pi Browser';
       }
+      
+      alert("❌ Checkout failed: " + errorMessage);
     }
   };
 
@@ -187,7 +229,6 @@ export default function CartPage() {
   )
 
   const isMobile = windowWidth < 768
-  const isSmallMobile = windowWidth < 480
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth)
@@ -222,9 +263,9 @@ export default function CartPage() {
 
   const c = theme === 'light' ? colors.light : colors.dark
 
-  // ✅ NEW: Show authentication status (optional)
+  // Status indicator
   const AuthStatus = () => {
-    if (!window.Pi) return null;
+    if (typeof window === 'undefined' || !window.Pi) return null;
     
     return (
       <div style={{
@@ -247,42 +288,32 @@ export default function CartPage() {
   if (totalItems === 0) {
     return (
       <div style={{ 
-        padding: isMobile ? '2rem 1rem' : 'clamp(40px, 8vw, 60px) clamp(16px, 4vw, 24px)',
+        padding: isMobile ? '2rem 1rem' : '3rem 2rem',
         textAlign: 'center', 
         background: c.background,
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        animation: 'fadeIn 0.5s ease-out',
-        position: 'relative',
-        overflow: 'hidden'
+        justifyContent: 'center'
       }}>
         <AuthStatus />
         
-        <div style={{
-          fontSize: isMobile ? '3.5rem' : 'clamp(4rem, 15vw, 6rem)',
-          marginBottom: isMobile ? '16px' : 'clamp(20px, 5vw, 32px)',
-          opacity: 0.4
-        }}>
+        <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: 0.4 }}>
           🛒
         </div>
         
         <h2 style={{
-          fontSize: isMobile ? '1.6rem' : 'clamp(1.8rem, 6vw, 2.5rem)',
-          marginBottom: '16px',
-          fontWeight: '700',
-          color: c.textDark,
-          fontFamily: 'Georgia, serif'
+          fontSize: '1.8rem',
+          marginBottom: '1rem',
+          color: c.textDark
         }}>
           {t('emptyCart')}
         </h2>
         
         <p style={{ 
-          margin: isMobile ? '0 0 2rem 0' : '0 0 clamp(32px, 6vw, 48px) 0',
-          color: c.textLight,
-          fontSize: isMobile ? '0.95rem' : 'clamp(1rem, 3.5vw, 1.2rem)'
+          marginBottom: '2rem',
+          color: c.textLight
         }}>
           {t('addProducts')}
         </p>
@@ -290,18 +321,17 @@ export default function CartPage() {
         <button
           onClick={() => navigate('/home')}
           style={{
-            padding: isMobile ? '12px 28px' : 'clamp(14px, 3.5vw, 18px) clamp(32px, 7vw, 48px)',
+            padding: '12px 32px',
             background: `linear-gradient(135deg, ${c.success} 0%, #7CB342 100%)`,
             color: '#FFFFFF',
             border: 'none',
-            borderRadius: isMobile ? '10px' : 'clamp(8px, 2vw, 12px)',
+            borderRadius: '10px',
             cursor: 'pointer',
             fontWeight: '700',
-            fontSize: isMobile ? '0.95rem' : 'clamp(1rem, 3.5vw, 1.15rem)',
-            boxShadow: '0 6px 20px rgba(139, 195, 74, 0.4)'
+            fontSize: '1rem'
           }}
         >
-          <span>🛍️</span> {t('continueShopping')}
+          🛍️ {t('continueShopping')}
         </button>
       </div>
     )
@@ -309,126 +339,58 @@ export default function CartPage() {
 
   return (
     <div style={{ 
-      padding: isMobile ? '1.5rem 1rem 5rem' : 'clamp(24px, 4vw, 32px) clamp(16px, 3vw, 24px) clamp(80px, 12vw, 100px)',
+      padding: isMobile ? '1.5rem 1rem 5rem' : '2rem 2rem 6rem',
       background: c.background,
-      minHeight: '100vh',
-      animation: 'fadeIn 0.5s ease-out',
-      position: 'relative'
+      minHeight: '100vh'
     }}>
       <AuthStatus />
       
-      {/* Logo */}
-      <div style={{
-        position: 'absolute',
-        top: isMobile ? '16px' : 'clamp(20px, 4vw, 32px)',
-        left: lang === 'ar' ? 'auto' : (isMobile ? '16px' : 'clamp(20px, 4vw, 32px)'),
-        right: lang === 'ar' ? (isMobile ? '16px' : 'clamp(20px, 4vw, 32px)') : 'auto',
-        zIndex: 10,
-        height: isMobile ? '50px' : 'clamp(55px, 12vw, 70px)'
-      }}>
-        <img 
-          src={getImage('logo')} 
-          alt="Louable" 
-          style={{ 
-            height: '100%',
-            filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.15))'
-          }} 
-        />
-      </div>
-
-      <div style={{ 
-        maxWidth: '950px', 
-        margin: '0 auto', 
-        paddingTop: isMobile ? '4rem' : 'clamp(60px, 12vw, 80px)' 
-      }}>
-        {/* Header */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: isMobile ? '1.5rem' : 'clamp(32px, 6vw, 48px)',
-          gap: isMobile ? '12px' : 'clamp(16px, 4vw, 24px)',
-          flexDirection: isMobile ? 'column' : 'row'
+      <div style={{ maxWidth: '950px', margin: '0 auto', paddingTop: '3rem' }}>
+        <h2 style={{ 
+          fontSize: '1.8rem',
+          fontWeight: '700',
+          color: c.textDark,
+          marginBottom: '2rem'
         }}>
-          <div style={{ width: isMobile ? '100%' : 'auto' }}>
-            <h2 style={{ 
-              margin: '0 0 8px 0',
-              fontSize: isMobile ? '1.5rem' : 'clamp(1.6rem, 5vw, 2.2rem)',
-              fontWeight: '700',
-              color: c.textDark,
-              fontFamily: 'Georgia, serif',
-              textAlign: isMobile ? 'center' : 'left'
-            }}>
-              {t('cart')} ({totalItems})
-            </h2>
-            <p style={{
-              margin: 0,
-              fontSize: isMobile ? '0.85rem' : 'clamp(0.9rem, 2.8vw, 1rem)',
-              color: c.textLight,
-              textAlign: isMobile ? 'center' : 'left'
-            }}>
-              Review your items before checkout
-            </p>
-          </div>
-          
-          <button
-            onClick={() => navigate('/home')}
-            style={{
-              padding: isMobile ? '10px 20px' : 'clamp(10px, 2.5vw, 12px) clamp(20px, 4vw, 28px)',
-              background: 'transparent',
-              border: `2px solid ${c.primary}`,
-              borderRadius: isMobile ? '8px' : 'clamp(8px, 2vw, 10px)',
-              cursor: 'pointer',
-              color: c.primary,
-              fontWeight: '600',
-              fontSize: isMobile ? '0.85rem' : 'clamp(0.9rem, 2.8vw, 1rem)',
-              width: isMobile ? '100%' : 'auto'
-            }}
-          >
-            <span>←</span> {t('continueShopping')}
-          </button>
-        </div>
+          {t('cart')} ({totalItems})
+        </h2>
 
-        {/* Cart Items - Your existing item rendering code */}
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: isMobile ? '1rem' : 'clamp(16px, 3.5vw, 20px)',
-          marginBottom: isMobile ? '2rem' : 'clamp(32px, 6vw, 48px)'
-        }}>
+        {/* Cart items */}
+        <div style={{ marginBottom: '2rem' }}>
           {items.map((item) => (
             <div key={item.id} style={{ 
-              padding: isMobile ? '16px' : 'clamp(20px, 4vw, 28px)',
+              padding: '1.5rem',
               backgroundColor: c.card,
-              borderRadius: isMobile ? '12px' : 'clamp(12px, 2.5vw, 16px)',
+              borderRadius: '12px',
+              marginBottom: '1rem',
               border: `1px solid ${c.border}`
             }}>
-              {/* Your existing item card JSX */}
-              <p>{item.name} - ${item.price}</p>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: c.textDark }}>
+                {item.name}
+              </h3>
+              <p style={{ color: c.secondary, fontSize: '1.2rem', fontWeight: '700', margin: 0 }}>
+                ${item.price.toFixed(2)}
+              </p>
             </div>
           ))}
         </div>
 
-        {/* Checkout Section */}
+        {/* Checkout */}
         <div style={{
-          padding: isMobile ? '20px' : 'clamp(28px, 6vw, 40px)',
+          padding: '2rem',
           background: c.card,
-          borderRadius: isMobile ? '12px' : 'clamp(12px, 2.5vw, 18px)',
-          maxWidth: '550px',
-          margin: '0 auto',
+          borderRadius: '12px',
           border: `2px solid ${c.secondary}40`,
-          boxShadow: theme === 'light'
-            ? `0 8px 30px rgba(62, 39, 35, 0.12)`
-            : `0 8px 30px rgba(0, 0, 0, 0.4)`
+          maxWidth: '550px',
+          margin: '0 auto'
         }}>
           <div style={{ 
             display: 'flex', 
-            justifyContent: 'space-between', 
-            fontSize: isMobile ? '1.3rem' : 'clamp(1.4rem, 5vw, 1.8rem)',
+            justifyContent: 'space-between',
+            fontSize: '1.5rem',
             fontWeight: '700',
             color: c.textDark,
-            marginBottom: isMobile ? '16px' : 'clamp(20px, 5vw, 32px)',
-            fontFamily: 'Georgia, serif'
+            marginBottom: '1.5rem'
           }}>
             <span>{t('total')}:</span>
             <span style={{ color: c.secondary }}>${totalPrice.toFixed(2)}</span>
@@ -439,23 +401,20 @@ export default function CartPage() {
             disabled={!piAuthenticated}
             style={{
               width: '100%',
-              padding: isMobile ? '14px' : 'clamp(14px, 3.5vw, 20px)',
+              padding: '14px',
               background: piAuthenticated 
                 ? `linear-gradient(135deg, ${c.success} 0%, #7CB342 100%)`
                 : '#999',
               color: 'white',
               border: 'none',
-              borderRadius: isMobile ? '10px' : 'clamp(8px, 2vw, 12px)',
+              borderRadius: '10px',
               fontWeight: '700',
-              fontSize: isMobile ? '1rem' : 'clamp(1.05rem, 3.5vw, 1.25rem)',
+              fontSize: '1.1rem',
               cursor: piAuthenticated ? 'pointer' : 'not-allowed',
-              boxShadow: piAuthenticated 
-                ? '0 6px 20px rgba(139, 195, 74, 0.4)' 
-                : 'none',
               opacity: piAuthenticated ? 1 : 0.6
             }}
           >
-            <span>✓</span> {piAuthenticated ? t('checkout') : 'Connecting to Pi...'}
+            ✓ {piAuthenticated ? t('checkout') : 'Connecting to Pi...'}
           </button>
           
           {piAuthError && (
@@ -470,14 +429,6 @@ export default function CartPage() {
           )}
         </div>
       </div>
-
-      {/* Animations */}
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
     </div>
   )
 }
