@@ -13,23 +13,17 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing paymentId' });
     }
 
-    // 🔥 ADD THIS DEBUG LOG
-    console.log('🔍 PI_API_KEY length:', process.env.PI_API_KEY?.length || 'MISSING');
-    
+    // 🔥 CRITICAL: Verify API key is set
     if (!process.env.PI_API_KEY) {
-      console.error('❌ PI_API_KEY is completely missing');
+      console.error('❌ PI_API_KEY missing in environment variables');
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
-    if (process.env.PI_API_KEY.length !== 64) {
-      console.error('❌ PI_API_KEY has wrong length:', process.env.PI_API_KEY.length);
-      return res.status(500).json({ error: 'Invalid API key configuration' });
-    }
-
-    const response = await fetch('https://api.minepi.com/v2/payments/' + paymentId + '/approve', {
+    // 🔥 CORRECT AUTHORIZATION HEADER
+    const response = await fetch(`https://api.minepi.com/v2/payments/${paymentId}/approve`, {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer ' + process.env.PI_API_KEY,
+        'Authorization': `Bearer ${process.env.PI_API_KEY}`, // ✅ MUST be "Bearer KEY"
         'Content-Type': 'application/json'
       }
     });
@@ -38,7 +32,7 @@ export default async function handler(req, res) {
       const errorText = await response.text();
       console.error('❌ Pi API error:', response.status, errorText);
       return res.status(response.status).json({ 
-        error: 'Pi Network error: ' + errorText 
+        error: `Pi Network error: ${errorText}` 
       });
     }
 
