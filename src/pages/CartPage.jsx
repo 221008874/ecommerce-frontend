@@ -707,7 +707,7 @@ const handleCheckout = async () => {
           </div>
 
           <button
-            onClick={() => handleCheckout}
+            onClick={handleCheckout}
             style={{
               width: '100%',
               padding: isMobile ? '14px' : 'clamp(14px, 3.5vw, 20px)',
