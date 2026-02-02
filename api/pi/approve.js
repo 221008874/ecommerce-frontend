@@ -1,69 +1,55 @@
 // api/pi/approve.js
 export default async function handler(req, res) {
-  // Set JSON response header immediately
   res.setHeader('Content-Type', 'application/json');
-
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Parse request body safely
-    let body = {};
-    try {
-      body = req.body || {};
-    } catch (parseError) {
-      console.error('❌ Body parse error:', parseError);
-      return res.status(400).json({ error: 'Invalid request body' });
-    }
-
-    const { paymentId } = body;
+    const { paymentId } = req.body;
 
     if (!paymentId) {
-      console.error('❌ Missing paymentId');
       return res.status(400).json({ error: 'Missing paymentId' });
     }
 
-    // Load pi-sdk dynamically
-    let PiNetwork;
-    try {
-      const pkg = await import('pi-sdk');
-      PiNetwork = pkg.PiNetwork;
-    } catch (importError) {
-      console.error('❌ pi-sdk import failed:', importError);
-      return res.status(500).json({ error: 'Payment service unavailable' });
-    }
-
+    // 🔥 ADD THIS DEBUG LOG
+    console.log('🔍 PI_API_KEY length:', process.env.PI_API_KEY?.length || 'MISSING');
+    
     if (!process.env.PI_API_KEY) {
-      console.error('❌ PI_API_KEY missing in environment');
+      console.error('❌ PI_API_KEY is completely missing');
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
-    // Initialize and approve
-    PiNetwork.init({
-      version: "2.0",
-      sandbox: true,
-      apiKey: process.env.PI_API_KEY
+    if (process.env.PI_API_KEY.length !== 64) {
+      console.error('❌ PI_API_KEY has wrong length:', process.env.PI_API_KEY.length);
+      return res.status(500).json({ error: 'Invalid API key configuration' });
+    }
+
+    const response = await fetch('https://api.minepi.com/v2/payments/' + paymentId + '/approve', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + process.env.PI_API_KEY,
+        'Content-Type': 'application/json'
+      }
     });
 
-    console.log('🚀 Approving payment:', paymentId);
-    await PiNetwork.approvePayment(paymentId);
-    
-    console.log('✅ Payment approved successfully');
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Pi API error:', response.status, errorText);
+      return res.status(response.status).json({ 
+        error: 'Pi Network error: ' + errorText 
+      });
+    }
+
+    const result = await response.json();
+    console.log('✅ Payment approved:', result);
     return res.status(200).json({ status: 'approved' });
 
   } catch (error) {
-    // Log full error for debugging
-    console.error('🔥 Approve failed:', {
-      message: error.message,
-      stack: error.stack,
-      paymentId: req.body?.paymentId
-    });
-
-    // Always return valid JSON
+    console.error('🔥 Approve failed:', error.message || error);
     return res.status(500).json({ 
-      error: error.message || 'Failed to approve payment',
-      success: false
+      error: error.message || 'Failed to approve payment'
     });
   }
 }
