@@ -108,33 +108,44 @@ const handleCheckout = async () => {
 };
 
 useEffect(() => {
-  // Only run in browser
-  if (typeof window !== 'undefined' && window.Pi) {
-    const initializePi = async () => {
-      try {
-        // ✅ MUST include 'payments' scope
-        const scopes = ['payments'];
-        
-        // Handle incomplete payments (optional but recommended)
-        function onIncompletePaymentFound(payment) {
-          console.log('🔄 Incomplete payment found:', payment.identifier);
-          // During testing, cancel incomplete payments:
-          if (window.Pi) {
-            window.Pi.cancelPayment(payment.identifier);
-          }
-        }
-
-        // ✅ Authenticate with required scope BEFORE creating payments
-        await window.Pi.authenticate(scopes, onIncompletePaymentFound);
-        console.log('✅ Pi authenticated with payments scope');
-      } catch (error) {
-        console.error('❌ Pi authentication failed:', error);
-        alert('Failed to connect to Pi Network. Please refresh the page.');
-      }
-    };
-
-    initializePi();
+  console.log('🔍 CartPage loaded - checking for Pi SDK...');
+  
+  if (typeof window === 'undefined') {
+    console.log('❌ Running on server, not browser');
+    return;
   }
+
+  if (!window.Pi) {
+    console.log('❌ Pi SDK not loaded - check index.html');
+    alert('Pi SDK not loaded. Please refresh or check your internet connection.');
+    return;
+  }
+
+  console.log('✅ Pi SDK found - attempting authentication...');
+
+  const initializePi = async () => {
+    try {
+      console.log('🔑 Requesting payments scope...');
+      
+      const scopes = ['payments'];
+      
+      function onIncompletePaymentFound(payment) {
+        console.log('🔄 Found incomplete payment:', payment.identifier);
+      }
+
+      // This should trigger the popup
+      const authResult = await window.Pi.authenticate(scopes, onIncompletePaymentFound);
+      
+      console.log('✅ Authentication successful:', authResult);
+      alert('✅ Pi Network connected! You can now make payments.');
+
+    } catch (error) {
+      console.error('❌ Authentication failed:', error);
+      alert('❌ Failed to connect to Pi Network: ' + error.message);
+    }
+  };
+
+  initializePi();
 }, []);
 
   const [windowWidth, setWindowWidth] = useState(
