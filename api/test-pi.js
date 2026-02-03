@@ -3,6 +3,7 @@ export default async function handler(req, res) {
   const API_KEY = process.env.PI_API_KEY;
   
   try {
+    // ✅ CORRECT - No extra spaces
     const response = await fetch('https://api.minepi.com/v2/me', {
       headers: { 'Authorization': `Bearer ${API_KEY}` }
     });
