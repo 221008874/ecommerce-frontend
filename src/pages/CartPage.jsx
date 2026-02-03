@@ -1,10 +1,10 @@
-// src/pages/CartPage.jsx - FIXED VERSION WITH PI SDK WAIT
+// src/pages/CartPage.jsx
+// ✅ FIXED: Better error handling for approval failures and alert syntax
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useTheme } from '../context/ThemeContext'
-
 export default function CartPage() {
   const { items, totalItems, totalPrice, removeFromCart, updateQuantity } = useCart()
   const { t, lang } = useLanguage()
@@ -13,39 +13,22 @@ export default function CartPage() {
   
   const [piAuthenticated, setPiAuthenticated] = useState(false)
   const [piAuthError, setPiAuthError] = useState(null)
-  const [piLoading, setPiLoading] = useState(true)
-
-  // ✅ FIXED: Wait for Pi SDK to load before checking
+  // Pi authentication
   useEffect(() => {
     const authenticatePi = async () => {
+      if (typeof window === 'undefined' || !window.Pi) {
+        console.warn('⚠️ Pi SDK not available');
+        setPiAuthError('Please open this app in Pi Browser');
+        return;
+      }
       try {
-        // Wait for Pi SDK to be available
-        let attempts = 0;
-        const maxAttempts = 50; // 5 seconds max (50 * 100ms)
-        
-        while (!window.Pi && attempts < maxAttempts) {
-          console.log(`⏳ Waiting for Pi SDK... (${attempts + 1}/${maxAttempts})`);
-          await new Promise(resolve => setTimeout(resolve, 100));
-          attempts++;
-        }
-        
-        // If Pi still not available, we're not in Pi Browser
-        if (!window.Pi) {
-          console.warn('⚠️ Pi SDK not available - not running in Pi Browser');
-          setPiLoading(false);
-          setPiAuthError('Please open this app in Pi Browser');
-          return;
-        }
-        
-        console.log('✅ Pi SDK found, authenticating...');
-        
+        console.log('🔐 Authenticating with Pi Network...');
         const scopes = ['payments'];
         
         const onIncompletePaymentFound = (payment) => {
           console.log('🔄 Incomplete payment:', payment.identifier);
           return payment;
         };
-        
         const auth = await window.Pi.authenticate(scopes, onIncompletePaymentFound);
         
         console.log('✅ Pi authenticated:', auth.user?.username);
@@ -56,40 +39,33 @@ export default function CartPage() {
         console.error('❌ Authentication failed:', error);
         setPiAuthError(error.message || 'Authentication failed');
         setPiAuthenticated(false);
-      } finally {
-        setPiLoading(false);
       }
     };
-    
     authenticatePi();
   }, []);
-
+  // ✅ FIXED: Better error handling in checkout
   const handleCheckout = async () => {
     if (!window.Pi) {
       alert("❌ Please open this app in Pi Browser");
       return;
     }
-    
     if (!piAuthenticated) {
       alert("❌ Please wait for Pi authentication to complete");
       return;
     }
-    
     try {
       console.log('💳 Starting checkout...');
-      
+      // ✅ CORRECT PAYMENT DATA
       const paymentData = {
         amount: totalPrice,
         memo: `Order for ${totalItems} item(s)`,
-        metadata: {
+        metadata: { // ✅ "metadata" not "meta"
           orderId: `order_${Date.now()}`,
           itemCount: totalItems,
           timestamp: new Date().toISOString()
         }
       };
-      
       console.log('Payment data:', paymentData);
-      
       const callbacks = {
         onReadyForServerApproval: async (paymentId) => {
           console.log("🚀 Approval needed for:", paymentId);
@@ -109,12 +85,14 @@ export default function CartPage() {
             console.log('📥 Approval response status:', response.status);
             console.log('📥 Content-Type:', response.headers.get('content-type'));
             
+            // ✅ FIXED: Check content type before parsing
             const contentType = response.headers.get('content-type') || '';
             
             let result;
             if (contentType.includes('application/json')) {
               result = await response.json();
             } else {
+              // Response is not JSON (probably HTML error page)
               const text = await response.text();
               console.error('❌ Non-JSON response:', text.substring(0, 200));
               
@@ -135,6 +113,7 @@ export default function CartPage() {
           } catch (error) {
             console.error("💥 Approval error:", error);
             
+            // More specific error messages
             if (error.message.includes('JSON')) {
               alert("❌ Server error: Invalid response format. Check server logs.");
             } else if (error.message.includes('Failed to fetch')) {
@@ -186,10 +165,15 @@ export default function CartPage() {
             }
             
             console.log("✅ Order completed:", result);
+            // ✅ FIXED: Correct alert syntax
             alert(`✅ Payment successful!\nTransaction ID: ${txid}\n\nThank you for your order!`);
+            
+            // Optional: Redirect or clear cart
+            // navigate('/order-success');
             
           } catch (error) {
             console.error("💥 Completion error:", error);
+            // ✅ FIXED: Correct alert syntax
             alert(`⚠️ Payment completed but order save failed.\n\nTransaction ID: ${txid}\n\nPlease save this for your records.`);
           }
         },
@@ -213,7 +197,7 @@ export default function CartPage() {
           alert("❌ Payment failed: " + errorMessage);
         }
       };
-      
+      // Create payment
       const payment = await window.Pi.createPayment(paymentData, callbacks);
       console.log("💳 Payment created:", payment.identifier);
       
@@ -229,18 +213,15 @@ export default function CartPage() {
       alert("❌ Checkout failed: " + errorMessage);
     }
   };
-
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1024
   )
   const isMobile = windowWidth < 768
-  
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
-
   const colors = {
     light: {
       primary: '#3E2723',
@@ -266,7 +247,6 @@ export default function CartPage() {
     }
   }
   const c = theme === 'light' ? colors.light : colors.dark
-
   // Status indicator
   const AuthStatus = () => {
     if (typeof window === 'undefined' || !window.Pi) return null;
@@ -277,18 +257,17 @@ export default function CartPage() {
         top: '10px',
         right: '10px',
         padding: '8px 12px',
-        background: piAuthenticated ? '#4CAF50' : (piLoading ? '#FF9800' : '#FF5252'),
+        background: piAuthenticated ? '#4CAF50' : '#FF9800',
         color: 'white',
         borderRadius: '6px',
         fontSize: '12px',
         zIndex: 1000,
         boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
       }}>
-        {piLoading ? '⏳ Connecting...' : (piAuthenticated ? '✅ Pi Connected' : '❌ Connection Failed')}
+        {piAuthenticated ? '✅ Pi Connected' : '⏳ Connecting...'}
       </div>
     );
   };
-
   if (totalItems === 0) {
     return (
       <div style={{ 
@@ -340,7 +319,6 @@ export default function CartPage() {
       </div>
     )
   }
-
   return (
     <div style={{ 
       padding: isMobile ? '1.5rem 1rem 5rem' : '2rem 2rem 6rem',
@@ -358,7 +336,6 @@ export default function CartPage() {
         }}>
           {t('cart')} ({totalItems})
         </h2>
-
         {/* Cart items */}
         <div style={{ marginBottom: '2rem' }}>
           {items.map((item) => (
@@ -378,7 +355,6 @@ export default function CartPage() {
             </div>
           ))}
         </div>
-
         {/* Checkout */}
         <div style={{
           padding: '2rem',
@@ -399,14 +375,13 @@ export default function CartPage() {
             <span>{t('total')}:</span>
             <span style={{ color: c.secondary }}>${totalPrice.toFixed(2)}</span>
           </div>
-
           <button
             onClick={handleCheckout}
-            disabled={!piAuthenticated || piLoading}
+            disabled={!piAuthenticated}
             style={{
               width: '100%',
               padding: '14px',
-              background: (piAuthenticated && !piLoading) 
+              background: piAuthenticated 
                 ? `linear-gradient(135deg, ${c.success} 0%, #7CB342 100%)`
                 : '#999',
               color: 'white',
@@ -414,11 +389,11 @@ export default function CartPage() {
               borderRadius: '10px',
               fontWeight: '700',
               fontSize: '1.1rem',
-              cursor: (piAuthenticated && !piLoading) ? 'pointer' : 'not-allowed',
-              opacity: (piAuthenticated && !piLoading) ? 1 : 0.6
+              cursor: piAuthenticated ? 'pointer' : 'not-allowed',
+              opacity: piAuthenticated ? 1 : 0.6
             }}
           >
-            ✓ {piLoading ? 'Connecting to Pi...' : (piAuthenticated ? t('checkout') : 'Connection Failed')}
+            ✓ {piAuthenticated ? t('checkout') : 'Connecting to Pi...'}
           </button>
           
           {piAuthError && (
