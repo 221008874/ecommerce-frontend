@@ -746,7 +746,7 @@ export default function Home() {
               }}
             >
               {[
-                { key: 'home', label: t('home'), path: '/home' },
+                { key: 'terms-of-service', label: t('terms-of-service'), path: '/terms-of-service' },
                 { key: 'privacy', label: t('privacy'), path: '/privacy' },
                 { key: 'aboutUs', label: t('aboutUs'), path: '/about' },
                 { key: 'contact', label: t('contact'), path: '#' }

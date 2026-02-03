@@ -7,6 +7,7 @@ import ProductDetail from './pages/ProductDetail'
 import AboutUs from './pages/AboutUs' // 👈 Add this import
  // 👈 new
 import PrivacyPolicy from './pages/PrivacyPolicy' // 👈 Add import
+import TermsOfService from './pages/TermsOfService';
 
 
 function App() {
@@ -18,7 +19,7 @@ function App() {
       <Route path="/product/:id" element={<ProductDetail />} /> {/* 👈 new */}
       <Route path="/privacy" element={<PrivacyPolicy />} /> {/* 👈 Add this */}
       <Route path="/about" element={<AboutUs />} /> {/* 👈 Add this route */}
-
+<Route path="/terms-of-service" element={<TermsOfService />} />
 
     </Routes>
   )
