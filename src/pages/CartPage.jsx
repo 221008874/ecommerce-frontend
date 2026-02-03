@@ -77,10 +77,12 @@ export default function CartPage() {
   
   try {
     console.log('💳 Starting checkout...');
+    const isSandbox = import.meta.env.VITE_PI_SANDBOX === 'true';
 
     // ✅ EXACT CORRECT FORMAT
     const paymentData = {
-      amount: Number(totalPrice), // Convert to number
+
+       amount: isSandbox ? 0.01 : Number(totalPrice),  // 0.01 in test, real amount in production
       memo: `Order for ${totalItems} item(s)`,
       metadata: { // "metadata" not "meta"
         purpose: "ecommerce_test"
