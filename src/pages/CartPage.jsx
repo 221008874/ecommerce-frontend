@@ -12,167 +12,242 @@ export default function CartPage() {
   const { theme } = useTheme()
   const navigate = useNavigate()
   
-  const [piStatus, setPiStatus] = useState('checking') // 'checking', 'available', 'authenticated', 'error'
-  const [piError, setPiError] = useState(null)
+  const [piAuthenticated, setPiAuthenticated] = useState(false)
+  const [piAuthError, setPiAuthError] = useState(null)
+  const [piLoading, setPiLoading] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [debugInfo, setDebugInfo] = useState({})
 
-  const API_BASE_URL = 'https://louablech.vercel.app'
+  const apiUrl = import.meta.env.VITE_API_URL || ''
 
-  // Check Pi SDK availability
+  // Pi authentication
   useEffect(() => {
-    const checkPi = async () => {
-      const info = {
-        userAgent: navigator.userAgent,
-        hostname: window.location.hostname,
-        protocol: window.location.protocol,
-        piExists: typeof window.Pi !== 'undefined',
-        timestamp: new Date().toISOString()
-      }
-      setDebugInfo(info)
-      console.log('🔍 Pi Debug Info:', info)
-
-      // Wait for Pi SDK
-      let attempts = 0
-      const maxAttempts = 50
-      
-      while (!window.Pi && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 100))
-        attempts++
-      }
-
-      if (!window.Pi) {
-        console.error('❌ Pi SDK not found after', maxAttempts, 'attempts')
-        setPiStatus('error')
-        setPiError('Pi SDK not available. Please open in Pi Browser.')
-        return
-      }
-
-      console.log('✅ Pi SDK found, attempting authentication...')
-      setPiStatus('available')
-
+    const authenticatePi = async () => {
       try {
-        const auth = await window.Pi.authenticate(['payments'], (payment) => {
-          console.log('🔄 Incomplete payment:', payment)
-          return payment
-        })
+        let attempts = 0
+        const maxAttempts = 50
+        
+        while (!window.Pi && attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+          attempts++
+        }
+        
+        if (!window.Pi) {
+          setPiLoading(false)
+          setPiAuthError('Please open this app in Pi Browser')
+          return
+        }
 
-        console.log('✅ Authentication successful:', auth)
-        setPiStatus('authenticated')
+        const scopes = ['payments']
+        
+        const onIncompletePaymentFound = (payment) => {
+          console.log('🔄 Incomplete payment:', payment.identifier)
+          return payment
+        }
+
+        const auth = await window.Pi.authenticate(scopes, onIncompletePaymentFound)
+        console.log('✅ Pi authenticated:', auth.user?.username)
+        setPiAuthenticated(true)
+        setPiAuthError(null)
         
       } catch (error) {
         console.error('❌ Authentication failed:', error)
-        setPiStatus('error')
-        setPiError(error.message || 'Authentication failed')
+        setPiAuthError(error.message || 'Authentication failed')
+        setPiAuthenticated(false)
+      } finally {
+        setPiLoading(false)
       }
     }
-
-    checkPi()
+    authenticatePi()
   }, [])
 
   const handleCheckout = async () => {
-    if (piStatus !== 'authenticated') {
-      alert('Please wait for Pi authentication')
+    if (!window.Pi) {
+      alert("❌ Please open this app in Pi Browser")
       return
     }
-
+    if (!piAuthenticated) {
+      alert("❌ Please wait for Pi authentication to complete")
+      return
+    }
+    
     setIsProcessing(true)
-
+    
     try {
+      console.log('💳 Starting Pi checkout...')
+
       const paymentData = {
         amount: Number(totalPrice),
-        memo: `Louable Order - ${totalItems} items`,
-        metadata: { app: 'Louable', items: totalItems }
+        memo: `Louable Order - ${totalItems} item(s)`,
+        metadata: {
+          app: "Louable",
+          itemCount: totalItems,
+          orderTime: new Date().toISOString()
+        }
       }
+
+      console.log('Payment Data:', paymentData)
+
+      const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
       const callbacks = {
         onReadyForServerApproval: async (paymentId) => {
-          console.log('🚀 Approving:', paymentId)
+          console.log("🚀 Approval needed for:", paymentId)
           
           try {
-            const res = await fetch(`${API_BASE_URL}/api/pi/approve`, {
+            const approveUrl = API_BASE_URL 
+              ? `${API_BASE_URL}/api/pi/approve`
+              : '/api/pi/approve'
+            
+            const response = await fetch(approveUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ paymentId })
             })
             
-            if (!res.ok) {
-              const err = await res.json()
-              throw new Error(err.error || 'Approval failed')
+            let result
+            const contentType = response.headers.get('content-type')
+            
+            if (contentType && contentType.includes('application/json')) {
+              result = await response.json()
+            } else {
+              const text = await response.text()
+              if (!text.trim()) {
+                throw new Error(`Server returned ${response.status}`)
+              }
+              result = JSON.parse(text)
             }
             
-            console.log('✅ Approved')
+            if (!response.ok) {
+              throw new Error(result.error || `HTTP ${response.status}`)
+            }
+            
+            console.log("✅ Server approved:", result)
+            
           } catch (error) {
-            alert('Approval failed: ' + error.message)
+            console.error("💥 Approval error:", error)
+            alert("❌ Approval failed: " + error.message)
             throw error
           }
         },
-
+        
         onReadyForServerCompletion: async (paymentId, txid) => {
-          console.log('✅ Completing:', paymentId, txid)
+          console.log("✅ Completing payment:", { paymentId, txid })
           
           try {
-            const res = await fetch(`${API_BASE_URL}/api/pi/complete`, {
+            const completeUrl = API_BASE_URL 
+              ? `${API_BASE_URL}/api/pi/complete`
+              : '/api/pi/complete'
+            
+            const response = await fetch(completeUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
                 paymentId, 
                 txid,
-                orderDetails: { items, totalPrice, totalItems }
+                orderDetails: {
+                  items,
+                  totalPrice,
+                  totalItems,
+                  timestamp: new Date().toISOString()
+                }
               })
             })
-
-            if (!res.ok) {
-              const err = await res.json()
-              throw new Error(err.error || 'Completion failed')
+            
+            let result
+            const contentType = response.headers.get('content-type')
+            
+            if (contentType && contentType.includes('application/json')) {
+              result = await response.json()
+            } else {
+              result = { success: response.ok }
+            }
+            
+            if (!response.ok) {
+              throw new Error(result.error || 'Completion failed')
             }
 
             // Save to Firebase
-            await addDoc(collection(db, 'orders'), {
-              orderId: `order_${Date.now()}`,
-              paymentId,
-              txid,
-              items,
-              totalPrice,
-              currency: 'PI',
-              status: 'completed',
-              createdAt: serverTimestamp()
-            })
+            try {
+              const orderData = {
+                orderId: result.orderId || `order_${Date.now()}`,
+                paymentMethod: 'pi',
+                paymentId,
+                txid,
+                items: items.map(item => ({
+                  id: item.id,
+                  name: item.name,
+                  price: item.price,
+                  quantity: item.quantity || 1
+                })),
+                totalPrice,
+                totalItems,
+                currency: 'PI',
+                status: 'completed',
+                createdAt: serverTimestamp(),
+                userAgent: navigator.userAgent
+              }
 
-            clearCart()
-            navigate('/order-success', { 
-              state: { orderId: paymentId, txid, totalPrice } 
-            })
+              const docRef = await addDoc(collection(db, 'orders'), orderData)
+              console.log('✅ Order saved:', docRef.id)
+              
+              clearCart()
+              navigate('/order-success', { 
+                state: { 
+                  orderId: orderData.orderId,
+                  txid,
+                  totalPrice,
+                  items 
+                }
+              })
+              
+            } catch (firebaseError) {
+              console.error('⚠️ Firebase error:', firebaseError)
+              alert(`✅ Payment successful but record failed.\nTXID: ${txid}`)
+            }
             
           } catch (error) {
-            alert('Completion error: ' + error.message)
+            console.error("💥 Completion error:", error)
+            alert(`⚠️ Issue occurred. TXID: ${txid}`)
           }
         },
-
+        
         onCancel: (paymentId) => {
-          console.log('❌ Cancelled:', paymentId)
+          console.log("❌ Cancelled:", paymentId)
           setIsProcessing(false)
-          alert('Payment cancelled')
+          alert("Payment cancelled")
         },
-
+        
         onError: (error) => {
-          console.error('💥 Payment error:', error)
+          console.error("💥 Error:", error)
           setIsProcessing(false)
-          alert('Payment failed: ' + error.message)
+          let msg = error.message || 'Unknown error'
+          if (msg.includes('scope')) msg = 'Auth error. Restart app.'
+          else if (msg.includes('network')) msg = 'Check connection.'
+          alert("❌ Failed: " + msg)
         }
       }
 
       const payment = await window.Pi.createPayment(paymentData, callbacks)
-      console.log('💳 Payment created:', payment.identifier)
-
+      console.log("💳 Created:", payment.identifier)
+      
     } catch (error) {
-      console.error('🔥 Checkout error:', error)
-      alert('Checkout failed: ' + error.message)
+      console.error("🔥 Checkout error:", error)
+      alert("❌ Failed: " + (error.message || 'Try again'))
       setIsProcessing(false)
     }
   }
 
-  // Colors
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1024
+  )
+  const isMobile = windowWidth < 768
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   const colors = {
     light: {
       primary: '#3E2723',
@@ -199,138 +274,212 @@ export default function CartPage() {
   }
 
   const c = theme === 'light' ? colors.light : colors.dark
-  const isMobile = window.innerWidth < 768
 
-  // Status badge
-  const getStatusBadge = () => {
-    const styles = {
-      position: 'fixed',
-      top: '10px',
-      right: '10px',
-      padding: '10px 16px',
-      borderRadius: '8px',
-      color: 'white',
-      fontWeight: '600',
-      zIndex: 1000,
-      boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-    }
-
-    switch (piStatus) {
-      case 'checking':
-        return <div style={{...styles, background: '#FF9800'}}>⏳ Checking Pi...</div>
-      case 'available':
-        return <div style={{...styles, background: '#2196F3'}}>🔐 Authenticating...</div>
-      case 'authenticated':
-        return <div style={{...styles, background: '#4CAF50'}}>✅ Pi Connected</div>
-      case 'error':
-        return <div style={{...styles, background: '#f44336'}}>❌ {piError}</div>
-      default:
-        return null
-    }
+  const AuthStatus = () => {
+    if (typeof window === 'undefined' || !window.Pi) return null
+    
+    return (
+      <div style={{
+        position: 'fixed',
+        top: '10px',
+        right: '10px',
+        padding: '8px 12px',
+        background: piAuthenticated ? '#4CAF50' : (piLoading ? '#FF9800' : '#FF5252'),
+        color: 'white',
+        borderRadius: '6px',
+        fontSize: '12px',
+        zIndex: 1000,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+      }}>
+        {piLoading ? '⏳ Connecting...' : (piAuthenticated ? '✅ Pi Connected' : '❌ Pi Failed')}
+      </div>
+    )
   }
 
   if (totalItems === 0) {
     return (
       <div style={{ 
-        padding: '3rem', textAlign: 'center', background: c.background,
-        minHeight: '100vh', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center'
+        padding: isMobile ? '2rem 1rem' : '3rem 2rem',
+        textAlign: 'center', 
+        background: c.background,
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
-        {getStatusBadge()}
-        <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🛒</div>
-        <h2 style={{ color: c.textDark }}>{t('emptyCart')}</h2>
+        <AuthStatus />
+        <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: 0.4 }}>🛒</div>
+        <h2 style={{ fontSize: '1.8rem', marginBottom: '1rem', color: c.textDark }}>
+          {t('emptyCart')}
+        </h2>
         <button onClick={() => navigate('/home')} style={{
-          padding: '12px 32px', background: c.success, color: 'white',
-          border: 'none', borderRadius: '10px', cursor: 'pointer',
-          fontWeight: '700'
+          padding: '12px 32px',
+          background: `linear-gradient(135deg, ${c.success} 0%, #7CB342 100%)`,
+          color: '#FFF', border: 'none', borderRadius: '10px',
+          fontWeight: '700', fontSize: '1rem', cursor: 'pointer'
         }}>
-          Continue Shopping
+          🛍️ {t('continueShopping')}
         </button>
       </div>
     )
   }
 
   return (
-    <div style={{ padding: '2rem', background: c.background, minHeight: '100vh' }}>
-      {getStatusBadge()}
+    <div style={{ 
+      padding: isMobile ? '1.5rem 1rem 5rem' : '2rem 2rem 6rem',
+      background: c.background, minHeight: '100vh'
+    }}>
+      <AuthStatus />
       
-      <div style={{ maxWidth: '950px', margin: '0 auto' }}>
-        <h2 style={{ color: c.textDark, marginBottom: '2rem' }}>
+      <div style={{ maxWidth: '950px', margin: '0 auto', paddingTop: '3rem' }}>
+        <h2 style={{ 
+          fontSize: '1.8rem', fontWeight: '700',
+          color: c.textDark, marginBottom: '2rem'
+        }}>
           {t('cart')} ({totalItems})
         </h2>
 
-        {/* Debug Info - Remove in production */}
-        <div style={{
-          background: '#263238', color: '#aed581', padding: '1rem',
-          borderRadius: '8px', marginBottom: '1rem', fontSize: '12px',
-          fontFamily: 'monospace', overflow: 'auto'
-        }}>
-          <strong>Debug Info:</strong><br/>
-          UA: {debugInfo.userAgent?.slice(0, 60)}...<br/>
-          Host: {debugInfo.hostname}<br/>
-          Protocol: {debugInfo.protocol}<br/>
-          Pi Exists: {debugInfo.piExists ? 'Yes' : 'No'}<br/>
-          Status: {piStatus}
+        {/* Cart Items */}
+        <div style={{ marginBottom: '2rem' }}>
+          {items.map((item) => (
+            <div key={item.id} style={{ 
+              padding: '1.5rem',
+              backgroundColor: c.card,
+              borderRadius: '12px',
+              marginBottom: '1rem',
+              border: `1px solid ${c.border}`,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '1rem'
+            }}>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', color: c.textDark }}>{item.name}</h3>
+                <p style={{ color: c.secondary, fontSize: '1.2rem', fontWeight: '700', margin: 0 }}>
+                  π {item.price.toFixed(2)}
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                    style={{
+                      width: '32px', height: '32px',
+                      borderRadius: '50%', border: `2px solid ${c.border}`,
+                      background: c.card, color: c.textDark,
+                      fontWeight: '700', cursor: 'pointer'
+                    }}
+                  >-</button>
+                  <span style={{ fontWeight: '700', minWidth: '24px', textAlign: 'center' }}>
+                    {item.quantity}
+                  </span>
+                  <button
+                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    style={{
+                      width: '32px', height: '32px',
+                      borderRadius: '50%', border: `2px solid ${c.border}`,
+                      background: c.card, color: c.textDark,
+                      fontWeight: '700', cursor: 'pointer'
+                    }}
+                  >+</button>
+                </div>
+                <button
+                  onClick={() => removeFromCart(item.id)}
+                  style={{
+                    background: c.danger, color: 'white',
+                    border: 'none', borderRadius: '8px',
+                    padding: '8px 12px', cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* Cart Items */}
-        {items.map((item) => (
-          <div key={item.id} style={{ 
-            padding: '1.5rem', background: c.card, borderRadius: '12px',
-            marginBottom: '1rem', border: `1px solid ${c.border}`,
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-          }}>
-            <div>
-              <h3 style={{ margin: 0, color: c.textDark }}>{item.name}</h3>
-              <p style={{ color: c.secondary, fontWeight: '700', margin: '0.5rem 0 0 0' }}>
-                π {item.price.toFixed(2)}
-              </p>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <button onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                disabled={item.quantity <= 1}
-                style={{ width: '32px', height: '32px', borderRadius: '50%', border: `2px solid ${c.border}`, background: c.card }}>-</button>
-              <span style={{ fontWeight: '700' }}>{item.quantity}</span>
-              <button onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                style={{ width: '32px', height: '32px', borderRadius: '50%', border: `2px solid ${c.border}`, background: c.card }}>+</button>
-              <button onClick={() => removeFromCart(item.id)}
-                style={{ background: c.danger, color: 'white', border: 'none', borderRadius: '8px', padding: '8px 12px' }}>✕</button>
-            </div>
-          </div>
-        ))}
-
-        {/* Summary */}
+        {/* Order Summary */}
         <div style={{
-          padding: '2rem', background: c.card, borderRadius: '12px',
-          border: `2px solid ${c.secondary}40`, maxWidth: '550px', margin: '0 auto'
+          padding: '2rem',
+          background: c.card,
+          borderRadius: '12px',
+          border: `2px solid ${c.secondary}40`,
+          maxWidth: '550px',
+          margin: '0 auto'
         }}>
           <div style={{ 
             display: 'flex', justifyContent: 'space-between',
-            fontSize: '1.5rem', fontWeight: '700', color: c.textDark,
-            marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: `2px solid ${c.border}`
+            fontSize: '1.5rem', fontWeight: '700',
+            color: c.textDark, marginBottom: '1.5rem',
+            paddingBottom: '1rem',
+            borderBottom: `2px solid ${c.border}`
           }}>
-            <span>Total:</span>
+            <span>{t('total')}:</span>
             <span style={{ color: c.secondary }}>π {totalPrice.toFixed(2)}</span>
           </div>
 
+          {/* Pi Checkout Button */}
           <button
             onClick={handleCheckout}
-            disabled={piStatus !== 'authenticated' || isProcessing}
+            disabled={!piAuthenticated || piLoading || isProcessing}
             style={{
-              width: '100%', padding: '16px',
-              background: (piStatus === 'authenticated' && !isProcessing) ? c.secondary : '#999',
-              color: 'white', border: 'none', borderRadius: '12px',
-              fontWeight: '700', fontSize: '1.2rem',
-              cursor: (piStatus === 'authenticated' && !isProcessing) ? 'pointer' : 'not-allowed',
-              opacity: (piStatus === 'authenticated' && !isProcessing) ? 1 : 0.6
+              width: '100%',
+              padding: '16px',
+              background: (piAuthenticated && !piLoading && !isProcessing)
+                ? `linear-gradient(135deg, ${c.secondary} 0%, #B8860B 100%)`
+                : '#999',
+              color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              fontWeight: '700',
+              fontSize: '1.2rem',
+              cursor: (piAuthenticated && !piLoading && !isProcessing) ? 'pointer' : 'not-allowed',
+              opacity: (piAuthenticated && !piLoading && !isProcessing) ? 1 : 0.6,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              transition: 'all 0.3s ease'
             }}
           >
-            {isProcessing ? '⏳ Processing...' : 
-             piStatus === 'authenticated' ? 'π Pay with Pi' : 
-             '⏳ Waiting for Pi...'}
+            {isProcessing ? (
+              <>
+                <span style={{ animation: 'spin 1s linear infinite' }}>⏳</span>
+                Processing...
+              </>
+            ) : piLoading ? (
+              '⏳ Connecting to Pi...'
+            ) : piAuthenticated ? (
+              <>
+                <span style={{ fontSize: '1.4rem' }}>π</span>
+                {t('checkout')} with Pi
+              </>
+            ) : (
+              '❌ Pi Not Connected'
+            )}
           </button>
+          
+          {piAuthError && (
+            <p style={{
+              marginTop: '12px',
+              color: c.danger,
+              fontSize: '0.85rem',
+              textAlign: 'center'
+            }}>
+              ⚠️ {piAuthError}
+            </p>
+          )}
         </div>
       </div>
+      
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   )
 }
