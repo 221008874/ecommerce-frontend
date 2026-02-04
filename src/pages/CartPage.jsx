@@ -12,83 +12,77 @@ export default function CartPage() {
   const { theme } = useTheme()
   const navigate = useNavigate()
   
-  const [piStatus, setPiStatus] = useState('checking')
+  const [piStatus, setPiStatus] = useState('checking') // 'checking', 'available', 'authenticated', 'error'
   const [piError, setPiError] = useState(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [debugInfo, setDebugInfo] = useState({})
 
   const API_BASE_URL = 'https://louablech.vercel.app'
 
-  // Check Pi SDK
-  useEffect(() => {
-    const checkPi = async () => {
-      const info = {
-        userAgent: navigator.userAgent,
-        hostname: window.location.hostname,
-        protocol: window.location.protocol,
-        piExists: typeof window.Pi !== 'undefined',
-        timestamp: new Date().toISOString()
-      }
-      setDebugInfo(info)
-      console.log('🔍 Pi Debug:', info)
+ // In CartPage.jsx - Replace the authentication useEffect with this:
 
-      if (!window.Pi) {
-        setPiStatus('error')
-        setPiError('Pi SDK not found. Open in Pi Browser.')
-        return
-      }
-
-      // Try authentication
-      try {
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 15000)
-        )
-        
-        const authPromise = window.Pi.authenticate(['payments'], (payment) => {
-          console.log('🔄 Incomplete payment:', payment)
-          return { action: 'cancel' }
-        })
-        
-        const auth = await Promise.race([authPromise, timeoutPromise])
-        
-        console.log('✅ Auth success:', auth)
-        setPiStatus('authenticated')
-        
-      } catch (error) {
-        console.error('❌ Auth error:', error)
-        setPiStatus('available') // Not error, just not authenticated yet
-        setPiError('Authentication pending. Tap below to retry.')
-      }
-    }
-
-    checkPi()
-  }, [])
-
-  // Retry authentication manually
-  const retryAuth = async () => {
-    setPiStatus('checking')
-    setPiError(null)
-    
+// Pi authentication with proper error handling
+useEffect(() => {
+  const authenticatePi = async () => {
     try {
-      const auth = await window.Pi.authenticate(['payments'], (p) => {
-        console.log('Incomplete:', p)
-        return { action: 'cancel' }
-      })
+      // Wait for Pi SDK to load
+      let attempts = 0;
+      const maxAttempts = 50;
       
-      console.log('✅ Retry success:', auth)
-      setPiStatus('authenticated')
-      setPiError(null)
+      while (!window.Pi && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      
+      if (!window.Pi) {
+        setPiAuthError('Please open this app in Pi Browser');
+        setPiAuthenticated(false);
+        return;
+      }
+
+      console.log('🔐 Authenticating with Pi Network...');
+      
+      // Authenticate with payments scope
+      const auth = await window.Pi.authenticate(
+        ['payments'], 
+        (payment) => {
+          console.log('🔄 Incomplete payment:', payment.identifier);
+          return payment;
+        }
+      );
+      
+      console.log('✅ Pi authenticated:', auth.user?.username);
+      setPiAuthenticated(true);
+      setPiAuthError(null);
       
     } catch (error) {
-      console.error('❌ Retry failed:', error)
-      setPiStatus('error')
-      setPiError(error.message || 'Authentication failed')
+      console.error('❌ Authentication failed:', error);
+      setPiAuthError(error.message || 'Authentication failed. Please try again.');
+      setPiAuthenticated(false);
     }
+  };
+
+  authenticatePi();
+}, []);
+// Add a manual retry button
+const retryAuth = async () => {
+  setPiStatus('checking');
+  setPiError(null);
+  
+  try {
+    const auth = await window.Pi.authenticate(['payments'], (p) => p);
+    console.log('Retry success:', auth);
+    setPiStatus('authenticated');
+  } catch (error) {
+    console.error('Retry failed:', error);
+    setPiStatus('error');
+    setPiError(error.message);
   }
+};
 
   const handleCheckout = async () => {
     if (piStatus !== 'authenticated') {
-      alert('Please connect Pi first')
+      alert('Please wait for Pi authentication')
       return
     }
 
@@ -143,6 +137,7 @@ export default function CartPage() {
               throw new Error(err.error || 'Completion failed')
             }
 
+            // Save to Firebase
             await addDoc(collection(db, 'orders'), {
               orderId: `order_${Date.now()}`,
               paymentId,
@@ -161,7 +156,6 @@ export default function CartPage() {
             
           } catch (error) {
             alert('Completion error: ' + error.message)
-            setIsProcessing(false)
           }
         },
 
@@ -235,11 +229,11 @@ export default function CartPage() {
       case 'checking':
         return <div style={{...styles, background: '#FF9800'}}>⏳ Checking Pi...</div>
       case 'available':
-        return <div style={{...styles, background: '#2196F3'}}>🔐 Tap to Connect</div>
+        return <div style={{...styles, background: '#2196F3'}}>🔐 Authenticating...</div>
       case 'authenticated':
         return <div style={{...styles, background: '#4CAF50'}}>✅ Pi Connected</div>
       case 'error':
-        return <div style={{...styles, background: '#f44336'}}>❌ Error</div>
+        return <div style={{...styles, background: '#f44336'}}>❌ {piError}</div>
       default:
         return null
     }
@@ -275,79 +269,19 @@ export default function CartPage() {
           {t('cart')} ({totalItems})
         </h2>
 
-        {/* Debug Info */}
+        {/* Debug Info - Remove in production */}
         <div style={{
           background: '#263238', color: '#aed581', padding: '1rem',
           borderRadius: '8px', marginBottom: '1rem', fontSize: '12px',
           fontFamily: 'monospace', overflow: 'auto'
         }}>
-          <strong>Debug:</strong><br/>
+          <strong>Debug Info:</strong><br/>
+          UA: {debugInfo.userAgent?.slice(0, 60)}...<br/>
           Host: {debugInfo.hostname}<br/>
+          Protocol: {debugInfo.protocol}<br/>
           Pi Exists: {debugInfo.piExists ? 'Yes' : 'No'}<br/>
-          Status: {piStatus}<br/>
-          {piError && `Error: ${piError}`}
+          Status: {piStatus}
         </div>
-
-        {/* 🔐 RETRY BUTTON - SHOWS WHEN AUTH PENDING */}
-        {piStatus === 'available' && (
-          <div style={{
-            padding: '1.5rem',
-            background: '#e3f2fd',
-            borderRadius: '12px',
-            marginBottom: '1.5rem',
-            textAlign: 'center',
-            border: '2px solid #2196F3'
-          }}>
-            <p style={{ margin: '0 0 1rem 0', color: '#1565c0', fontWeight: '600' }}>
-              🔐 Pi authentication required
-            </p>
-            <button 
-              onClick={retryAuth}
-              style={{
-                padding: '14px 32px',
-                background: 'linear-gradient(135deg, #2196F3, #1976d2)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '10px',
-                fontSize: '1.1rem',
-                fontWeight: '700',
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(33, 150, 243, 0.4)'
-              }}
-            >
-              Connect Pi Wallet
-            </button>
-          </div>
-        )}
-
-        {/* Error Message */}
-        {piStatus === 'error' && (
-          <div style={{
-            padding: '1.5rem',
-            background: '#ffebee',
-            borderRadius: '12px',
-            marginBottom: '1.5rem',
-            color: '#c62828',
-            textAlign: 'center'
-          }}>
-            <p style={{ margin: '0 0 1rem 0', fontWeight: '600' }}>
-              ⚠️ {piError}
-            </p>
-            <button 
-              onClick={retryAuth}
-              style={{
-                padding: '12px 24px',
-                background: '#f44336',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
-            >
-              Try Again
-            </button>
-          </div>
-        )}
 
         {/* Cart Items */}
         {items.map((item) => (
@@ -403,7 +337,7 @@ export default function CartPage() {
           >
             {isProcessing ? '⏳ Processing...' : 
              piStatus === 'authenticated' ? 'π Pay with Pi' : 
-             '⏳ Connect Pi First'}
+             '⏳ Waiting for Pi...'}
           </button>
         </div>
       </div>
