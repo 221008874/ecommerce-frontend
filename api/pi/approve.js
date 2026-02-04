@@ -1,6 +1,5 @@
 // api/pi/approve.js
 
-// CORS headers for all responses
 const corsHeaders = {
   'Access-Control-Allow-Credentials': 'true',
   'Access-Control-Allow-Origin': '*',
@@ -9,7 +8,7 @@ const corsHeaders = {
 };
 
 export default async function handler(req, res) {
-  // Handle OPTIONS preflight immediately
+  // Handle OPTIONS preflight
   if (req.method === 'OPTIONS') {
     Object.entries(corsHeaders).forEach(([key, value]) => {
       res.setHeader(key, value);
@@ -17,77 +16,38 @@ export default async function handler(req, res) {
     return res.status(204).end();
   }
 
-  // Set CORS headers for all other responses
+  // Set CORS headers
   Object.entries(corsHeaders).forEach(([key, value]) => {
     res.setHeader(key, value);
   });
-  
-  res.setHeader('Content-Type', 'application/json');
 
-  console.log('═══════════════════════════════════════');
-  console.log('🔍 APPROVE ENDPOINT CALLED');
-  console.log('Method:', req.method);
-  console.log('Body type:', typeof req.body);
-  console.log('Body:', req.body);
-  console.log('═══════════════════════════════════════');
-
-  // Only POST allowed
   if (req.method !== 'POST') {
-    return res.status(405).json({ 
-      error: 'Method not allowed',
-      receivedMethod: req.method 
-    });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Parse body manually if needed
-    let body = req.body;
-    
-    // If body is string, parse it
-    if (typeof body === 'string') {
-      try {
-        body = JSON.parse(body);
-      } catch (parseError) {
-        console.error('Failed to parse body string:', body);
-        return res.status(400).json({ 
-          error: 'Invalid JSON in request body',
-          details: parseError.message,
-          receivedBody: body 
-        });
-      }
-    }
-    
-    // If body is still undefined or null, try to get raw body
-    if (!body && req.rawBody) {
-      try {
-        body = JSON.parse(req.rawBody);
-      } catch (e) {
-        console.error('Failed to parse rawBody');
-      }
-    }
+    // Vercel should have parsed this automatically
+    console.log('Body received:', req.body);
+    console.log('Body type:', typeof req.body);
 
-    const { paymentId } = body || {};
-    
+    const paymentId = req.body?.paymentId;
+
     if (!paymentId) {
       return res.status(400).json({ 
         error: 'Missing paymentId',
-        receivedBody: body,
-        bodyType: typeof req.body
+        receivedBody: req.body,
+        tip: 'Make sure Content-Type: application/json header is set'
       });
     }
 
     const apiKey = process.env.PI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ 
-        error: 'Server configuration error',
-        details: 'PI_API_KEY not set' 
-      });
+      return res.status(500).json({ error: 'PI_API_KEY not configured' });
     }
 
     // Call Pi API
     const url = `https://api.minepi.com/v2/payments/${paymentId}/approve`;
-    console.log('📞 Calling Pi API:', url);
-
+    
     const piResponse = await fetch(url, {
       method: 'POST',
       headers: {
@@ -98,7 +58,6 @@ export default async function handler(req, res) {
 
     if (piResponse.ok) {
       const result = await piResponse.json();
-      console.log('✅ Payment approved');
       return res.status(200).json({ 
         status: 'approved',
         paymentId,
@@ -106,27 +65,24 @@ export default async function handler(req, res) {
       });
     } else {
       const errorText = await piResponse.text();
-      console.error('❌ Pi API Error:', piResponse.status, errorText);
       return res.status(piResponse.status).json({ 
-        error: 'Payment approval failed',
-        statusCode: piResponse.status,
+        error: 'Pi API error',
         details: errorText 
       });
     }
     
   } catch (error) {
-    console.error('💥 Exception:', error);
+    console.error('Error:', error);
     return res.status(500).json({ 
       error: 'Internal server error',
-      message: error.message,
-      stack: error.stack
+      message: error.message 
     });
   }
 }
 
-// Tell Vercel NOT to parse body automatically (we'll do it manually)
+// Use Vercel's default body parser (JSON)
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: true,
   },
 };
