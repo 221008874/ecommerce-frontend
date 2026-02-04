@@ -1,4 +1,3 @@
-// api/lib/firebase-admin.js
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
@@ -43,13 +42,51 @@ try {
   // Don't throw - let the API continue without Firebase
 }
 
-// Export safe db that won't crash if not configured
+// Export safe db that won't crash if not configured - matches Firestore interface
 export const safeDb = db || {
-  collection: () => ({
+  collection: (collectionName) => ({
     add: async (data) => {
-      console.log('Firebase not configured - order not saved:', data.orderId);
-      return { id: 'no-firebase-' + Date.now() };
-    }
+      console.log(`Firebase not configured - order not saved to ${collectionName}:`, data.orderId || 'no-order-id');
+      return { 
+        id: 'no-firebase-' + Date.now(),
+        get: async () => ({ 
+          data: () => data, 
+          exists: true,
+          id: 'no-firebase-' + Date.now()
+        })
+      };
+    },
+    doc: (docId) => ({
+      get: async () => ({ 
+        exists: false, 
+        data: () => null,
+        id: docId
+      }),
+      set: async (data, options) => {
+        console.log(`Firebase not configured - doc ${docId} not set:`, data);
+        return { writeTime: { toDate: () => new Date() } };
+      },
+      update: async (data) => {
+        console.log(`Firebase not configured - doc ${docId} not updated:`, data);
+        return { writeTime: { toDate: () => new Date() } };
+      }
+    }),
+    where: () => ({
+      get: async () => ({ 
+        docs: [], 
+        empty: true,
+        forEach: () => {},
+        size: 0
+      })
+    }),
+    orderBy: () => ({
+      get: async () => ({
+        docs: [],
+        empty: true,
+        forEach: () => {},
+        size: 0
+      })
+    })
   })
 };
 

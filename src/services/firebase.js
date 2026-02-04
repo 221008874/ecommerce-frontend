@@ -1,6 +1,5 @@
-// src/lib/firebase.js
 import { initializeApp } from 'firebase/app'
-import { getFirestore } from 'firebase/firestore'
+import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: "AIzaSyBOHwckfAbEYHOhmhKzmOYd8GEY7mywqE4",
@@ -11,5 +10,30 @@ const firebaseConfig = {
   appId: "1:966810994370:web:6c691e3a0d3afcb6439d5b"
 }
 
-const app = initializeApp(firebaseConfig)
-export const db = getFirestore(app)
+let app;
+let db;
+
+try {
+  app = initializeApp(firebaseConfig)
+  db = getFirestore(app)
+  
+  // Enable offline persistence (optional)
+  if (typeof window !== 'undefined') {
+    enableIndexedDbPersistence(db).catch((err) => {
+      if (err.code === 'failed-precondition') {
+        console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+      } else if (err.code === 'unimplemented') {
+        console.warn('Browser does not support persistence.');
+      }
+    });
+  }
+  
+  console.log('✅ Firebase Client initialized');
+} catch (error) {
+  console.error('❌ Firebase Client init error:', error);
+  // Provide fallback
+  db = null;
+}
+
+export { db }
+export default app

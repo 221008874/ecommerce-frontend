@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     return res.json({ 
       status: 'ready', 
       piKeyConfigured: !!process.env.PI_API_KEY,
-      firebaseConfigured: false // Will update after check
+      firebaseConfigured: false
     });
   }
   
@@ -30,9 +30,14 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'PI_API_KEY not set' });
     }
 
+    // Validate API key format
+    if (!apiKey.match(/^(sandbox_|mainnet_)/)) {
+      console.warn('⚠️ PI_API_KEY does not start with sandbox_ or mainnet_');
+    }
+
     const isSandbox = apiKey.startsWith('sandbox_') || process.env.PI_SANDBOX === 'true';
     const baseUrl = isSandbox 
-      ? 'https://api.sandbox.minepi.com' 
+      ? 'https://api.sandbox.minepi.com'
       : 'https://api.minepi.com';
     
     const url = `${baseUrl}/v2/payments/${paymentId}/complete`;
@@ -61,8 +66,7 @@ export default async function handler(req, res) {
     let firebaseError = null;
     
     try {
-      // Dynamic import - only load if needed
-      const { safeDb } = await import('../lib/firebase-admin.js');
+      const { safeDb } = await import('./lib/firebase-admin.js');
       const { FieldValue } = await import('firebase-admin/firestore');
       
       const docRef = await safeDb.collection('orders').add({
@@ -72,7 +76,9 @@ export default async function handler(req, res) {
         items: orderDetails?.items || [],
         totalPrice: orderDetails?.totalPrice || 0,
         status: 'completed',
-        createdAt: FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        completedAt: FieldValue.serverTimestamp(),
+        environment: isSandbox ? 'sandbox' : 'mainnet'
       });
       firebaseId = docRef.id;
     } catch (fbErr) {
@@ -85,7 +91,7 @@ export default async function handler(req, res) {
       paymentId, 
       txid, 
       firebaseId,
-      firebaseError, // Will be null if successful
+      firebaseError,
       piData 
     });
     
