@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+// No import needed - use native fetch
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -19,7 +19,6 @@ export default async function handler(req, res) {
     const apiKey = process.env.PI_API_KEY;
     if (!apiKey) return res.status(500).json({ error: 'PI_API_KEY not set' });
 
-    // CORRECT Pi Network API endpoints
     const isSandbox = apiKey.includes('sandbox');
     const baseUrl = isSandbox 
       ? 'https://api.sandbox.minepi.com' 
