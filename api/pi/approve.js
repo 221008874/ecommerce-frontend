@@ -11,7 +11,6 @@ const corsHeaders = {
 export default async function handler(req, res) {
   // Handle OPTIONS preflight immediately
   if (req.method === 'OPTIONS') {
-    console.log('🔄 Handling OPTIONS preflight for approve');
     Object.entries(corsHeaders).forEach(([key, value]) => {
       res.setHeader(key, value);
     });
@@ -28,12 +27,12 @@ export default async function handler(req, res) {
   console.log('═══════════════════════════════════════');
   console.log('🔍 APPROVE ENDPOINT CALLED');
   console.log('Method:', req.method);
-  console.log('Origin:', req.headers.origin);
+  console.log('Body type:', typeof req.body);
+  console.log('Body:', req.body);
   console.log('═══════════════════════════════════════');
 
   // Only POST allowed
   if (req.method !== 'POST') {
-    console.error('❌ Wrong method:', req.method);
     return res.status(405).json({ 
       error: 'Method not allowed',
       receivedMethod: req.method 
@@ -41,16 +40,29 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Parse body if needed
+    // Parse body manually if needed
     let body = req.body;
+    
+    // If body is string, parse it
     if (typeof body === 'string') {
       try {
         body = JSON.parse(body);
       } catch (parseError) {
+        console.error('Failed to parse body string:', body);
         return res.status(400).json({ 
           error: 'Invalid JSON in request body',
-          details: parseError.message 
+          details: parseError.message,
+          receivedBody: body 
         });
+      }
+    }
+    
+    // If body is still undefined or null, try to get raw body
+    if (!body && req.rawBody) {
+      try {
+        body = JSON.parse(req.rawBody);
+      } catch (e) {
+        console.error('Failed to parse rawBody');
       }
     }
 
@@ -59,7 +71,8 @@ export default async function handler(req, res) {
     if (!paymentId) {
       return res.status(400).json({ 
         error: 'Missing paymentId',
-        receivedBody: body 
+        receivedBody: body,
+        bodyType: typeof req.body
       });
     }
 
@@ -105,14 +118,15 @@ export default async function handler(req, res) {
     console.error('💥 Exception:', error);
     return res.status(500).json({ 
       error: 'Internal server error',
-      message: error.message 
+      message: error.message,
+      stack: error.stack
     });
   }
 }
 
-// Tell Vercel to parse JSON body
+// Tell Vercel NOT to parse body automatically (we'll do it manually)
 export const config = {
   api: {
-    bodyParser: true,
+    bodyParser: false,
   },
 };
