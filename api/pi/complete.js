@@ -14,16 +14,16 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'PI_API_KEY not configured' });
     }
 
-    // ✅ FIXED: No extra spaces
+    // ✅ FIXED: No space, correct auth header
     const url = `https://api.minepi.com/v2/payments/${paymentId}/complete`;
     
     const piResponse = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`, // ✅ Bearer
+        'Authorization': `Key ${apiKey}`, // ✅ Changed from Bearer to Key
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ txid })
+      body: JSON.stringify({ txid }) // Must match Pi API format
     });
 
     if (!piResponse.ok) {
@@ -33,10 +33,12 @@ export default async function handler(req, res) {
 
     const piResult = await piResponse.json();
     
+    // ✅ SECURITY: Only mark complete after Pi API confirms success
     return res.status(200).json({ 
       success: true, 
       orderId: `order_${Date.now()}`,
-      txid 
+      txid,
+      piData: piResult // Include Pi's response for verification
     });
     
   } catch (error) {

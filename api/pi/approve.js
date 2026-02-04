@@ -14,13 +14,13 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'PI_API_KEY not configured' });
     }
 
-    // ✅ FIXED: No extra spaces
+    // ✅ FIXED: No space, correct auth header
     const url = `https://api.minepi.com/v2/payments/${paymentId}/approve`;
     
     const piResponse = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`, // ✅ Bearer, not Key
+        'Authorization': `Key ${apiKey}`, // ✅ Changed from Bearer to Key
         'Content-Type': 'application/json'
       }
     });
