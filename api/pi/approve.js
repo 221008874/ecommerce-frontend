@@ -1,3 +1,5 @@
+import fetch from 'node-fetch';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -18,7 +20,6 @@ export default async function handler(req, res) {
     if (!apiKey) return res.status(500).json({ error: 'PI_API_KEY not set' });
 
     const isSandbox = apiKey.includes('sandbox');
-    // FIXED: Removed spaces in URLs
     const baseUrl = isSandbox ? 'https://api.sandbox.pi' : 'https://api.mainnet.pi';
     
     const piRes = await fetch(`${baseUrl}/v2/payments/${paymentId}/approve`, {
