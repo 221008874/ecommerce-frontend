@@ -21,22 +21,26 @@ export default async function handler(req, res) {
     res.setHeader(key, value);
   });
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  // Accept GET for testing, POST for production
+  if (req.method !== 'POST' && req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed', method: req.method });
   }
 
   try {
-    // Vercel should have parsed this automatically
-    console.log('Body received:', req.body);
-    console.log('Body type:', typeof req.body);
+    // Get paymentId from body (POST) or query (GET)
+    const paymentId = req.body?.paymentId || req.query?.paymentId;
 
-    const paymentId = req.body?.paymentId;
+    console.log('Method:', req.method);
+    console.log('Body:', req.body);
+    console.log('Query:', req.query);
+    console.log('PaymentId:', paymentId);
 
     if (!paymentId) {
       return res.status(400).json({ 
         error: 'Missing paymentId',
         receivedBody: req.body,
-        tip: 'Make sure Content-Type: application/json header is set'
+        receivedQuery: req.query,
+        method: req.method
       });
     }
 
@@ -67,6 +71,7 @@ export default async function handler(req, res) {
       const errorText = await piResponse.text();
       return res.status(piResponse.status).json({ 
         error: 'Pi API error',
+        status: piResponse.status,
         details: errorText 
       });
     }
@@ -80,7 +85,6 @@ export default async function handler(req, res) {
   }
 }
 
-// Use Vercel's default body parser (JSON)
 export const config = {
   api: {
     bodyParser: true,
