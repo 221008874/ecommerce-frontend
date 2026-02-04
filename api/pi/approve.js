@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   // CORS headers
-  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -17,17 +17,23 @@ export default async function handler(req, res) {
   try {
     const { paymentId } = req.body;
     
+    console.log('📝 Approve request received:', { paymentId });
+
     if (!paymentId) {
+      console.log('❌ Missing paymentId');
       return res.status(400).json({ error: 'Missing paymentId' });
     }
 
     const apiKey = process.env.PI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: 'PI_API_KEY not configured' });
+      console.error('❌ PI_API_KEY not configured');
+      return res.status(500).json({ error: 'Server configuration error' });
     }
 
     const url = `https://api.minepi.com/v2/payments/${paymentId}/approve`;
     
+    console.log('🌐 Calling Pi API:', url);
+
     const piResponse = await fetch(url, {
       method: 'POST',
       headers: {
@@ -36,22 +42,27 @@ export default async function handler(req, res) {
       }
     });
 
+    const responseText = await piResponse.text();
+    console.log('🌐 Pi API response:', piResponse.status, responseText.substring(0, 200));
+
     if (piResponse.ok) {
-      const result = await piResponse.json();
+      const result = JSON.parse(responseText);
+      console.log('✅ Approval successful');
       return res.status(200).json({ 
+        success: true,
         status: 'approved',
         paymentId,
         data: result 
       });
     } else {
-      const errorText = await piResponse.text();
+      console.error('❌ Pi API error:', responseText);
       return res.status(piResponse.status).json({ 
-        error: 'Approval failed',
-        details: errorText 
+        error: 'Pi approval failed',
+        details: responseText 
       });
     }
   } catch (error) {
-    console.error('💥 Approve Error:', error);
+    console.error('💥 Server error:', error);
     return res.status(500).json({ error: error.message });
   }
 }
