@@ -1,5 +1,4 @@
-// api/pi/complete.js
-import fetch from 'node-fetch'; // Use node-fetch for reliability
+import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
   // CORS headers - MUST be first
@@ -47,6 +46,7 @@ export default async function handler(req, res) {
 
     // Determine environment
     const isSandbox = apiKey.includes('sandbox') || process.env.PI_SANDBOX === 'true';
+    // FIXED: Removed spaces in URLs
     const baseUrl = isSandbox ? 'https://api.sandbox.pi' : 'https://api.mainnet.pi';
     
     const url = `${baseUrl}/v2/payments/${paymentId}/complete`;

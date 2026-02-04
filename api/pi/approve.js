@@ -1,4 +1,3 @@
-// api/pi/approve.js
 import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
@@ -38,6 +37,7 @@ export default async function handler(req, res) {
     }
 
     const isSandbox = apiKey.includes('sandbox') || process.env.PI_SANDBOX === 'true';
+    // FIXED: Removed spaces in URLs
     const baseUrl = isSandbox ? 'https://api.sandbox.pi' : 'https://api.mainnet.pi';
     
     const url = `${baseUrl}/v2/payments/${paymentId}/approve`;
