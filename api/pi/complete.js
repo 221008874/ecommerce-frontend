@@ -1,4 +1,4 @@
-// api/pi/complete.js - Handles GET for testing, POST for actual use
+// api/pi/complete.js
 export default async function handler(req, res) {
   // CORS headers FIRST
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // GET for testing - show status
+  // GET for testing
   if (req.method === 'GET') {
     return res.status(200).json({
       status: 'endpoint ready',
@@ -21,29 +21,46 @@ export default async function handler(req, res) {
     });
   }
 
-  // POST for actual payment completion
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed. Use GET for testing or POST for payment completion.' });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const apiKey = process.env.PI_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: 'PI_API_KEY not set in Vercel env' });
+    // Parse body with multiple fallbacks
+    let body;
+    
+    if (typeof req.body === 'string') {
+      try {
+        body = JSON.parse(req.body);
+      } catch (e) {
+        return res.status(400).json({ error: 'Invalid JSON string', received: req.body });
+      }
+    } else if (Buffer.isBuffer(req.body)) {
+      try {
+        body = JSON.parse(req.body.toString());
+      } catch (e) {
+        return res.status(400).json({ error: 'Invalid JSON in buffer', received: req.body.toString() });
+      }
+    } else if (typeof req.body === 'object' && req.body !== null) {
+      body = req.body;
+    } else {
+      // Try to read raw body
+      const chunks = [];
+      for await (const chunk of req) {
+        chunks.push(chunk);
+      }
+      const rawBody = Buffer.concat(chunks).toString();
+      try {
+        body = JSON.parse(rawBody);
+      } catch (e) {
+        return res.status(400).json({ error: 'Invalid JSON in stream', received: rawBody });
+      }
     }
 
-    // Parse body
-    let body = req.body;
-    if (typeof body === 'string') {
-      body = JSON.parse(body);
-    } else if (Buffer.isBuffer(body)) {
-      body = JSON.parse(body.toString());
-    }
-    
+    console.log('Parsed body:', body);
+
     const { paymentId, txid, orderDetails } = body || {};
     
-    console.log('Complete request:', { paymentId, txid });
-
     if (!paymentId || !txid) {
       return res.status(400).json({ 
         error: 'Missing paymentId or txid', 
@@ -51,12 +68,14 @@ export default async function handler(req, res) {
       });
     }
 
-    // Call Pi API
+    const apiKey = process.env.PI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'PI_API_KEY not set' });
+    }
+
     const isSandbox = apiKey.includes('sandbox');
     const baseUrl = isSandbox ? 'https://api.sandbox.pi' : 'https://api.mainnet.pi';
     
-    console.log('Calling:', `${baseUrl}/v2/payments/${paymentId}/complete`);
-
     const piRes = await fetch(`${baseUrl}/v2/payments/${paymentId}/complete`, {
       method: 'POST',
       headers: {
@@ -69,7 +88,6 @@ export default async function handler(req, res) {
     const piData = await piRes.json();
 
     if (!piRes.ok) {
-      console.error('Pi API error:', piRes.status, piData);
       return res.status(piRes.status).json({ 
         error: 'Pi API error', 
         status: piRes.status,
@@ -77,33 +95,10 @@ export default async function handler(req, res) {
       });
     }
 
-    // Try save to Firebase (optional)
-    let firebaseId = null;
-    try {
-      if (process.env.FIREBASE_PRIVATE_KEY || process.env.FIREBASE_SERVICE_ACCOUNT) {
-        const { db } = await import('../lib/firebase-admin.js');
-        const { FieldValue } = await import('firebase-admin/firestore');
-        
-        const docRef = await db.collection('orders').add({
-          orderId: `order_${Date.now()}`,
-          paymentId,
-          txid,
-          items: orderDetails?.items || [],
-          totalPrice: orderDetails?.totalPrice || 0,
-          status: 'completed',
-          createdAt: FieldValue.serverTimestamp()
-        });
-        firebaseId = docRef.id;
-      }
-    } catch (fbError) {
-      console.log('Firebase save skipped:', fbError.message);
-    }
-
     return res.status(200).json({
       success: true,
       paymentId,
       txid,
-      firebaseId,
       piData
     });
 
@@ -111,7 +106,14 @@ export default async function handler(req, res) {
     console.error('Error:', error);
     return res.status(500).json({ 
       error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      stack: error.stack 
     });
   }
 }
+
+// Disable body parsing to handle it manually
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
