@@ -19,66 +19,56 @@ export default function CartPage() {
 
   const API_BASE_URL = 'https://louablech.vercel.app'
 
- // In CartPage.jsx - Replace the authentication useEffect with this:
+  // Check Pi SDK availability
+  useEffect(() => {
+    const checkPi = async () => {
+      const info = {
+        userAgent: navigator.userAgent,
+        hostname: window.location.hostname,
+        protocol: window.location.protocol,
+        piExists: typeof window.Pi !== 'undefined',
+        timestamp: new Date().toISOString()
+      }
+      setDebugInfo(info)
+      console.log('🔍 Pi Debug Info:', info)
 
-// Pi authentication with proper error handling
-useEffect(() => {
-  const authenticatePi = async () => {
-    try {
-      // Wait for Pi SDK to load
-      let attempts = 0;
-      const maxAttempts = 50;
+      // Wait for Pi SDK
+      let attempts = 0
+      const maxAttempts = 50
       
       while (!window.Pi && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
+        await new Promise(resolve => setTimeout(resolve, 100))
+        attempts++
       }
-      
+
       if (!window.Pi) {
-        setPiAuthError('Please open this app in Pi Browser');
-        setPiAuthenticated(false);
-        return;
+        console.error('❌ Pi SDK not found after', maxAttempts, 'attempts')
+        setPiStatus('error')
+        setPiError('Pi SDK not available. Please open in Pi Browser.')
+        return
       }
 
-      console.log('🔐 Authenticating with Pi Network...');
-      
-      // Authenticate with payments scope
-      const auth = await window.Pi.authenticate(
-        ['payments'], 
-        (payment) => {
-          console.log('🔄 Incomplete payment:', payment.identifier);
-          return payment;
-        }
-      );
-      
-      console.log('✅ Pi authenticated:', auth.user?.username);
-      setPiAuthenticated(true);
-      setPiAuthError(null);
-      
-    } catch (error) {
-      console.error('❌ Authentication failed:', error);
-      setPiAuthError(error.message || 'Authentication failed. Please try again.');
-      setPiAuthenticated(false);
-    }
-  };
+      console.log('✅ Pi SDK found, attempting authentication...')
+      setPiStatus('available')
 
-  authenticatePi();
-}, []);
-// Add a manual retry button
-const retryAuth = async () => {
-  setPiStatus('checking');
-  setPiError(null);
-  
-  try {
-    const auth = await window.Pi.authenticate(['payments'], (p) => p);
-    console.log('Retry success:', auth);
-    setPiStatus('authenticated');
-  } catch (error) {
-    console.error('Retry failed:', error);
-    setPiStatus('error');
-    setPiError(error.message);
-  }
-};
+      try {
+        const auth = await window.Pi.authenticate(['payments'], (payment) => {
+          console.log('🔄 Incomplete payment:', payment)
+          return payment
+        })
+
+        console.log('✅ Authentication successful:', auth)
+        setPiStatus('authenticated')
+        
+      } catch (error) {
+        console.error('❌ Authentication failed:', error)
+        setPiStatus('error')
+        setPiError(error.message || 'Authentication failed')
+      }
+    }
+
+    checkPi()
+  }, [])
 
   const handleCheckout = async () => {
     if (piStatus !== 'authenticated') {
