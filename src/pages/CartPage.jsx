@@ -18,47 +18,89 @@ export default function CartPage() {
   const [isProcessing, setIsProcessing] = useState(false)
 
   const apiUrl = import.meta.env.VITE_API_URL || ''
-
-  // Pi authentication
-  useEffect(() => {
-    const authenticatePi = async () => {
-      try {
-        let attempts = 0
-        const maxAttempts = 50
-        
-        while (!window.Pi && attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 100))
-          attempts++
-        }
-        
-        if (!window.Pi) {
-          setPiLoading(false)
-          setPiAuthError('Please open this app in Pi Browser')
-          return
-        }
-
-        const scopes = ['payments']
-        
-        const onIncompletePaymentFound = (payment) => {
-          console.log('🔄 Incomplete payment:', payment.identifier)
-          return payment
-        }
-
-        const auth = await window.Pi.authenticate(scopes, onIncompletePaymentFound)
-        console.log('✅ Pi authenticated:', auth.user?.username)
-        setPiAuthenticated(true)
-        setPiAuthError(null)
-        
-      } catch (error) {
-        console.error('❌ Authentication failed:', error)
-        setPiAuthError(error.message || 'Authentication failed')
-        setPiAuthenticated(false)
-      } finally {
-        setPiLoading(false)
+useEffect(() => {
+  const initializePi = async () => {
+    try {
+      // Wait for Pi SDK
+      let attempts = 0;
+      while (!window.Pi && attempts < 20) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
       }
+
+      if (!window.Pi) {
+        throw new Error('Pi SDK failed to load');
+      }
+
+      const isSandbox = window.location.hostname === 'localhost';
+      
+      Pi.init({ 
+        version: "2.0",
+        sandbox: isSandbox
+      });
+
+      console.log('📦 Pi SDK initialized');
+
+      // ✅ CRITICAL: Handle incomplete payments
+      const onIncompletePaymentFound = async (payment) => {
+        console.log('⚠️ INCOMPLETE PAYMENT DETECTED:', payment);
+        console.log('   Payment ID:', payment.identifier);
+        console.log('   Amount:', payment.amount);
+        console.log('   Status:', payment.status);
+
+        // Try to auto-complete it
+        try {
+          console.log('🔄 Attempting to auto-complete...');
+
+          // Get the transaction ID from the payment object
+          const txid = payment.transaction?.txid || payment.txid || '';
+
+          const response = await fetch('/api/pi/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paymentId: payment.identifier,
+              txid: txid,
+              orderDetails: {
+                items: [],
+                totalPrice: payment.amount,
+                totalItems: 1
+              }
+            })
+          });
+
+          const result = await response.json();
+
+          if (response.ok) {
+            console.log('✅ SUCCESSFULLY COMPLETED PENDING PAYMENT:', result);
+            alert('✅ Auto-completed pending payment!');
+          } else {
+            console.error('❌ Failed to complete:', result);
+            console.log('Response status:', response.status);
+            console.log('Response body:', result);
+          }
+        } catch (error) {
+          console.error('❌ Error auto-completing payment:', error);
+          console.error('Error details:', error.message);
+        }
+      };
+
+      console.log('🔐 Authenticating...');
+      const auth = await Pi.authenticate(['payments'], onIncompletePaymentFound);
+
+      console.log('✅ AUTHENTICATED:', auth.user.username);
+      setAuthToken(auth.accessToken);
+      setPiStatus('authenticated');
+
+    } catch (error) {
+      console.error('❌ Pi initialization error:', error);
+      setPiStatus('error');
+      alert('Authentication failed: ' + error.message);
     }
-    authenticatePi()
-  }, [])
+  };
+
+  initializePi();
+}, []);
 
   const handleCheckout = async () => {
     if (!window.Pi) {
