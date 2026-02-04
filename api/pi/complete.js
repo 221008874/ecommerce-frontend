@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  // CORS headers FIRST - before any imports that could fail
+  // CORS headers FIRST
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
@@ -10,8 +10,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     return res.json({ 
       status: 'ready', 
-      piKeyConfigured: !!process.env.PI_API_KEY,
-      firebaseConfigured: false
+      piKeyConfigured: !!process.env.PI_API_KEY
     });
   }
   
@@ -28,11 +27,6 @@ export default async function handler(req, res) {
     const apiKey = process.env.PI_API_KEY;
     if (!apiKey) {
       return res.status(500).json({ error: 'PI_API_KEY not set' });
-    }
-
-    // Validate API key format
-    if (!apiKey.match(/^(sandbox_|mainnet_)/)) {
-      console.warn('⚠️ PI_API_KEY does not start with sandbox_ or mainnet_');
     }
 
     const isSandbox = apiKey.startsWith('sandbox_') || process.env.PI_SANDBOX === 'true';
@@ -61,37 +55,18 @@ export default async function handler(req, res) {
       });
     }
 
-    // Try Firebase - but don't fail if it doesn't work
-    let firebaseId = null;
-    let firebaseError = null;
-    
-    try {
-      const { safeDb } = await import('./lib/firebase-admin.js');
-      const { FieldValue } = await import('firebase-admin/firestore');
-      
-      const docRef = await safeDb.collection('orders').add({
-        orderId: `order_${Date.now()}`,
-        paymentId,
-        txid,
-        items: orderDetails?.items || [],
-        totalPrice: orderDetails?.totalPrice || 0,
-        status: 'completed',
-        createdAt: FieldValue.serverTimestamp(),
-        completedAt: FieldValue.serverTimestamp(),
-        environment: isSandbox ? 'sandbox' : 'mainnet'
-      });
-      firebaseId = docRef.id;
-    } catch (fbErr) {
-      firebaseError = fbErr.message;
-      console.log('Firebase save failed:', fbErr.message);
-    }
+    // Log order details to console (no Firebase)
+    console.log('Payment completed:', {
+      paymentId,
+      txid,
+      orderDetails,
+      timestamp: new Date().toISOString()
+    });
 
     return res.json({ 
       success: true, 
       paymentId, 
       txid, 
-      firebaseId,
-      firebaseError,
       piData 
     });
     
