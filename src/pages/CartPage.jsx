@@ -18,266 +18,275 @@ export default function CartPage() {
   const [isProcessing, setIsProcessing] = useState(false)
 
   const apiUrl = import.meta.env.VITE_API_URL || ''
-useEffect(() => {
-  const initializePi = async () => {
-    try {
-      // Wait for Pi SDK
-      let attempts = 0;
-      while (!window.Pi && attempts < 20) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-      }
 
-      if (!window.Pi) {
-        throw new Error('Pi SDK failed to load');
-      }
-
-      const isSandbox = window.location.hostname === 'localhost';
-      
-      Pi.init({ 
-        version: "2.0",
-        sandbox: isSandbox
-      });
-
-      console.log('📦 Pi SDK initialized');
-
-      // ✅ CRITICAL: Handle incomplete payments
-      const onIncompletePaymentFound = async (payment) => {
-        console.log('⚠️ INCOMPLETE PAYMENT DETECTED:', payment);
-        console.log('   Payment ID:', payment.identifier);
-        console.log('   Amount:', payment.amount);
-        console.log('   Status:', payment.status);
-
-        // Try to auto-complete it
-        try {
-          console.log('🔄 Attempting to auto-complete...');
-
-          // Get the transaction ID from the payment object
-          const txid = payment.transaction?.txid || payment.txid || '';
-
-          const response = await fetch('/api/pi/complete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              paymentId: payment.identifier,
-              txid: txid,
-              orderDetails: {
-                items: [],
-                totalPrice: payment.amount,
-                totalItems: 1
-              }
-            })
-          });
-
-          const result = await response.json();
-
-          if (response.ok) {
-            console.log('✅ SUCCESSFULLY COMPLETED PENDING PAYMENT:', result);
-            alert('✅ Auto-completed pending payment!');
-          } else {
-            console.error('❌ Failed to complete:', result);
-            console.log('Response status:', response.status);
-            console.log('Response body:', result);
-          }
-        } catch (error) {
-          console.error('❌ Error auto-completing payment:', error);
-          console.error('Error details:', error.message);
+  // Pi authentication
+  useEffect(() => {
+    const authenticatePi = async () => {
+      try {
+        let attempts = 0
+        const maxAttempts = 50
+        
+        while (!window.Pi && attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+          attempts++
         }
-      };
+        
+        if (!window.Pi) {
+          setPiLoading(false)
+          setPiAuthError('Please open this app in Pi Browser')
+          return
+        }
 
-      console.log('🔐 Authenticating...');
-      const auth = await Pi.authenticate(['payments'], onIncompletePaymentFound);
+        const scopes = ['payments']
+        
+const onIncompletePaymentFound = async (payment) => {
+  console.log('⚠️ INCOMPLETE PAYMENT FOUND');
+  
+  try {
+    const response = await fetch('/api/pi/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        paymentId: payment.identifier,
+        txid: payment.transaction?.txid || '',
+        orderDetails: { items: [], totalPrice: payment.amount, totalItems: 1 }
+      })
+    });
 
-      console.log('✅ AUTHENTICATED:', auth.user.username);
-      setAuthToken(auth.accessToken);
-      setPiStatus('authenticated');
-
-    } catch (error) {
-      console.error('❌ Pi initialization error:', error);
-      setPiStatus('error');
-      alert('Authentication failed: ' + error.message);
+    if (response.ok) {
+      console.log('✅ COMPLETED PENDING PAYMENT');
     }
-  };
+  } catch (error) {
+    console.error('❌ Error:', error);
+  }
+  
+  // ✅ CRITICAL - Return the payment!
+  return payment;
+};
 
-  initializePi();
-}, []);
+        const auth = await window.Pi.authenticate(scopes, onIncompletePaymentFound)
+        console.log('✅ Pi authenticated:', auth.user?.username)
+        setPiAuthenticated(true)
+        setPiAuthError(null)
+        
+      } catch (error) {
+        console.error('❌ Authentication failed:', error)
+        setPiAuthError(error.message || 'Authentication failed')
+        setPiAuthenticated(false)
+      } finally {
+        setPiLoading(false)
+      }
+    }
+    authenticatePi()
+  }, [])
 
   const handleCheckout = async () => {
-    if (!window.Pi) {
-      alert("❌ Please open this app in Pi Browser")
-      return
-    }
-    if (!piAuthenticated) {
-      alert("❌ Please wait for Pi authentication to complete")
-      return
-    }
-    
-    setIsProcessing(true)
-    
-    try {
-      console.log('💳 Starting Pi checkout...')
-
-      const paymentData = {
-        amount: Number(totalPrice),
-        memo: `Louable Order - ${totalItems} item(s)`,
-        metadata: {
-          app: "Louable",
-          itemCount: totalItems,
-          orderTime: new Date().toISOString()
-        }
-      }
-
-      console.log('Payment Data:', paymentData)
-
-      const API_BASE_URL = import.meta.env.VITE_API_URL || ''
-
-      const callbacks = {
-        onReadyForServerApproval: async (paymentId) => {
-          console.log("🚀 Approval needed for:", paymentId)
-          
-          try {
-            const approveUrl = API_BASE_URL 
-              ? `${API_BASE_URL}/api/pi/approve`
-              : '/api/pi/approve'
-            
-            const response = await fetch(approveUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ paymentId })
-            })
-            
-            let result
-            const contentType = response.headers.get('content-type')
-            
-            if (contentType && contentType.includes('application/json')) {
-              result = await response.json()
-            } else {
-              const text = await response.text()
-              if (!text.trim()) {
-                throw new Error(`Server returned ${response.status}`)
-              }
-              result = JSON.parse(text)
-            }
-            
-            if (!response.ok) {
-              throw new Error(result.error || `HTTP ${response.status}`)
-            }
-            
-            console.log("✅ Server approved:", result)
-            
-          } catch (error) {
-            console.error("💥 Approval error:", error)
-            alert("❌ Approval failed: " + error.message)
-            throw error
-          }
-        },
-        
-        onReadyForServerCompletion: async (paymentId, txid) => {
-          console.log("✅ Completing payment:", { paymentId, txid })
-          
-          try {
-            const completeUrl = API_BASE_URL 
-              ? `${API_BASE_URL}/api/pi/complete`
-              : '/api/pi/complete'
-            
-            const response = await fetch(completeUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                paymentId, 
-                txid,
-                orderDetails: {
-                  items,
-                  totalPrice,
-                  totalItems,
-                  timestamp: new Date().toISOString()
-                }
-              })
-            })
-            
-            let result
-            const contentType = response.headers.get('content-type')
-            
-            if (contentType && contentType.includes('application/json')) {
-              result = await response.json()
-            } else {
-              result = { success: response.ok }
-            }
-            
-            if (!response.ok) {
-              throw new Error(result.error || 'Completion failed')
-            }
-
-            // Save to Firebase
-            try {
-              const orderData = {
-                orderId: result.orderId || `order_${Date.now()}`,
-                paymentMethod: 'pi',
-                paymentId,
-                txid,
-                items: items.map(item => ({
-                  id: item.id,
-                  name: item.name,
-                  price: item.price,
-                  quantity: item.quantity || 1
-                })),
-                totalPrice,
-                totalItems,
-                currency: 'PI',
-                status: 'completed',
-                createdAt: serverTimestamp(),
-                userAgent: navigator.userAgent
-              }
-
-              const docRef = await addDoc(collection(db, 'orders'), orderData)
-              console.log('✅ Order saved:', docRef.id)
-              
-              clearCart()
-              navigate('/order-success', { 
-                state: { 
-                  orderId: orderData.orderId,
-                  txid,
-                  totalPrice,
-                  items 
-                }
-              })
-              
-            } catch (firebaseError) {
-              console.error('⚠️ Firebase error:', firebaseError)
-              alert(`✅ Payment successful but record failed.\nTXID: ${txid}`)
-            }
-            
-          } catch (error) {
-            console.error("💥 Completion error:", error)
-            alert(`⚠️ Issue occurred. TXID: ${txid}`)
-          }
-        },
-        
-        onCancel: (paymentId) => {
-          console.log("❌ Cancelled:", paymentId)
-          setIsProcessing(false)
-          alert("Payment cancelled")
-        },
-        
-        onError: (error) => {
-          console.error("💥 Error:", error)
-          setIsProcessing(false)
-          let msg = error.message || 'Unknown error'
-          if (msg.includes('scope')) msg = 'Auth error. Restart app.'
-          else if (msg.includes('network')) msg = 'Check connection.'
-          alert("❌ Failed: " + msg)
-        }
-      }
-
-      const payment = await window.Pi.createPayment(paymentData, callbacks)
-      console.log("💳 Created:", payment.identifier)
-      
-    } catch (error) {
-      console.error("🔥 Checkout error:", error)
-      alert("❌ Failed: " + (error.message || 'Try again'))
-      setIsProcessing(false)
-    }
+  // ✅ FIRST: Check if user is authenticated
+  if (!window.Pi) {  // ✅ Simple check instead
+    alert('Pi not initialized');
+    return;
   }
+
+  // ✅ SECOND: Prevent multiple simultaneous payments
+  if (isProcessing) {
+    alert('Payment already in progress. Please wait...');
+    return;
+  }
+
+  setIsProcessing(true);
+
+  try {
+    // ✅ THIRD: Check if there's a pending payment
+    console.log('🔍 Checking for pending payments...');
+    
+    if (window.Pi && typeof window.Pi.getPendingPayments === 'function') {
+      try {
+        const pendingPayments = await window.Pi.getPendingPayments();
+        console.log('Pending payments:', pendingPayments);
+        
+        if (pendingPayments && pendingPayments.length > 0) {
+          console.log('⚠️ Found pending payments, trying to complete them first...');
+          
+          for (const payment of pendingPayments) {
+            try {
+              console.log('🔄 Completing pending payment:', payment.identifier);
+              
+              const txid = payment.transaction?.txid || payment.txid || '';
+              
+              const completeResponse = await fetch('/api/pi/complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  paymentId: payment.identifier,
+                  txid: txid,
+                  orderDetails: { items, totalPrice, totalItems }
+                })
+              });
+
+              if (completeResponse.ok) {
+                console.log('✅ Completed pending payment');
+              } else {
+                console.error('❌ Failed to complete pending payment');
+              }
+            } catch (error) {
+              console.error('Error completing pending payment:', error);
+            }
+          }
+          
+          // Wait a moment before continuing
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      } catch (error) {
+        console.error('Error checking pending payments:', error);
+      }
+    }
+
+    // ✅ FOURTH: Now create the new payment
+    console.log('💳 Creating new payment...');
+    
+    const paymentData = {
+      amount: Number(totalPrice),
+      memo: `Louable Order - ${totalItems} items`,
+      meta: { purpose: "ecommerce_test" }
+    };
+
+    console.log('💳 Payment data:', paymentData);
+
+    const callbacks = {
+      onReadyForServerApproval: async (paymentId) => {
+        console.log('🚀 Approving payment:', paymentId);
+        
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+          const response = await fetch('https://louablech.vercel.app/api/pi/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentId }),
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+
+          let result;
+          const contentType = response.headers.get('content-type');
+          
+          if (contentType && contentType.includes('application/json')) {
+            result = await response.json();
+          } else {
+            const text = await response.text();
+            if (text.trim() === '') {
+              throw new Error(`Server returned ${response.status} with no content`);
+            }
+            try {
+              result = JSON.parse(text);
+            } catch {
+              throw new Error(`Server error: ${text.substring(0, 100)}`);
+            }
+          }
+          
+          if (!response.ok) {
+            throw new Error(result.error || `HTTP ${response.status}`);
+          }
+          
+          console.log('✅ Payment approved');
+        } catch (error) {
+          console.error('💥 Approval error:', error);
+          alert('❌ Approval failed: ' + error.message);
+          throw error;
+        }
+      },
+
+      onReadyForServerCompletion: async (paymentId, txid) => {
+        console.log('✅ Completing payment:', paymentId, txid);
+        
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+          const response = await fetch('https://louablech.vercel.app/api/pi/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              paymentId, 
+              txid,
+              orderDetails: { items, totalPrice, totalItems }
+            }),
+            signal: controller.signal
+          });
+
+          clearTimeout(timeoutId);
+
+          let result;
+          const contentType = response.headers.get('content-type');
+          
+          if (contentType && contentType.includes('application/json')) {
+            result = await response.json();
+          } else {
+            const text = await response.text();
+            console.warn('⚠️ Non-JSON response:', text.substring(0, 100));
+            result = { success: response.ok };
+          }
+          
+          if (!response.ok) {
+            throw new Error(result.error || 'Completion failed');
+          }
+
+          // Save to Firebase
+          await addDoc(collection(db, 'orders'), {
+            orderId: `order_${Date.now()}`,
+            paymentId,
+            txid,
+            items: items.map(item => ({
+              id: item.id,
+              name: item.name,
+              price: item.price,
+              quantity: item.quantity || 1
+            })),
+            totalPrice,
+            totalItems,
+            currency: 'PI',
+            status: 'completed',
+            createdAt: serverTimestamp()
+          });
+
+          console.log('✅ Order saved');
+          clearCart();
+          navigate('/order-success', { 
+            state: { orderId: paymentId, txid, totalPrice, items } 
+          });
+          
+        } catch (error) {
+          console.error('💥 Completion error:', error);
+          alert('⚠️ Payment completed but order save failed. TXID: ' + txid);
+          setIsProcessing(false);
+        }
+      },
+
+      onCancel: (paymentId) => {
+        console.log('❌ Payment cancelled:', paymentId);
+        setIsProcessing(false);
+        alert('Payment cancelled');
+      },
+
+      onError: (error) => {
+        console.error('💥 Payment error:', error);
+        setIsProcessing(false);
+        alert('❌ Payment failed: ' + (error.message || 'Unknown error'));
+      }
+    };
+
+    // ✅ Create the payment
+    const payment = await window.Pi.createPayment(paymentData, callbacks);
+    console.log('💳 Payment created:', payment.identifier);
+
+  } catch (error) {
+    console.error('🔥 Checkout error:', error);
+    alert('❌ Checkout failed: ' + (error.message || 'Please try again'));
+    setIsProcessing(false);
+  }
+};
 
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1024

@@ -58,6 +58,7 @@ export default async function handler(req, res) {
     if (!piResponse.ok) {
       const errorText = await piResponse.text();
       console.error('❌ Pi API error:', piResponse.status, errorText);
+      // ✅ FIXED: Use 'new' keyword with Error
       throw new Error(`Pi API error: ${errorText}`);
     }
 
