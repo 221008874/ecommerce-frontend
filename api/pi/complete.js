@@ -1,13 +1,13 @@
 import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
-  // CORS headers - MUST be first
+  // CORS headers - MUST be first, before any logic that could fail
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
 
-  // Handle preflight
+  // Handle preflight immediately
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Parse body
+    // Parse body safely
     let body = req.body;
     if (typeof body === 'string') {
       try {
@@ -38,23 +38,24 @@ export default async function handler(req, res) {
       });
     }
 
+    // Check API key - return clear error if missing
     const apiKey = process.env.PI_API_KEY;
     if (!apiKey) {
       console.error('❌ PI_API_KEY not set');
-      return res.status(500).json({ error: 'PI_API_KEY not configured' });
+      return res.status(500).json({ 
+        error: 'Server configuration error: PI_API_KEY not set. Please add PI_API_KEY to Vercel environment variables.' 
+      });
     }
 
     // Determine environment
     const isSandbox = apiKey.includes('sandbox') || process.env.PI_SANDBOX === 'true';
-    // FIXED: Removed spaces in URLs
     const baseUrl = isSandbox ? 'https://api.sandbox.pi' : 'https://api.mainnet.pi';
     
     const url = `${baseUrl}/v2/payments/${paymentId}/complete`;
     
     console.log('Calling Pi API:', url);
-    console.log('Environment:', isSandbox ? 'SANDBOX' : 'MAINNET');
 
-    // Use node-fetch with timeout
+    // Call Pi API with timeout
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 
@@ -84,25 +85,30 @@ export default async function handler(req, res) {
     const piData = await piRes.json();
     console.log('Pi success');
 
-    // Try Firebase (optional)
+    // Try Firebase only if configured (optional)
     let firebaseId = null;
     try {
-      const { db } = await import('../lib/firebase-admin.js');
-      const { FieldValue } = await import('firebase-admin/firestore');
-      
-      const docRef = await db.collection('orders').add({
-        orderId: `order_${Date.now()}`,
-        paymentId,
-        txid,
-        items: orderDetails?.items || [],
-        totalPrice: orderDetails?.totalPrice || 0,
-        totalItems: orderDetails?.totalItems || 0,
-        status: 'completed',
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp()
-      });
-      firebaseId = docRef.id;
-      console.log('Saved to Firebase:', firebaseId);
+      // Only import if Firebase env vars are set
+      if (process.env.FIREBASE_PRIVATE_KEY || process.env.FIREBASE_SERVICE_ACCOUNT) {
+        const { db } = await import('../lib/firebase-admin.js');
+        const { FieldValue } = await import('firebase-admin/firestore');
+        
+        const docRef = await db.collection('orders').add({
+          orderId: `order_${Date.now()}`,
+          paymentId,
+          txid,
+          items: orderDetails?.items || [],
+          totalPrice: orderDetails?.totalPrice || 0,
+          totalItems: orderDetails?.totalItems || 0,
+          status: 'completed',
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp()
+        });
+        firebaseId = docRef.id;
+        console.log('Saved to Firebase:', firebaseId);
+      } else {
+        console.log('⚠️ Firebase not configured, skipping database save');
+      }
     } catch (fbError) {
       console.error('Firebase error (continuing):', fbError.message);
     }

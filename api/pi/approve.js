@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
-  // CORS headers
+  // CORS headers first
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -31,13 +31,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing paymentId' });
     }
 
+    // Check API key
     const apiKey = process.env.PI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: 'PI_API_KEY not configured' });
+      return res.status(500).json({ 
+        error: 'Server configuration error: PI_API_KEY not set. Please add PI_API_KEY to Vercel environment variables.' 
+      });
     }
 
     const isSandbox = apiKey.includes('sandbox') || process.env.PI_SANDBOX === 'true';
-    // FIXED: Removed spaces in URLs
     const baseUrl = isSandbox ? 'https://api.sandbox.pi' : 'https://api.mainnet.pi';
     
     const url = `${baseUrl}/v2/payments/${paymentId}/approve`;
