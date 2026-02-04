@@ -15,102 +15,89 @@ export default function CartPage() {
   const [piAuthenticated, setPiAuthenticated] = useState(false)
   const [piAuthError, setPiAuthError] = useState(null)
   const [piLoading, setPiLoading] = useState(true)
-  // ✅ ADD: Payment method state
-  const [paymentMethod, setPaymentMethod] = useState('pi') // 'pi' or 'egp'
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [piSdkAvailable, setPiSdkAvailable] = useState(false)
 
   const apiUrl = import.meta.env.VITE_API_URL || ''
 
-  // Pi authentication
+  // Enhanced Pi SDK detection
   useEffect(() => {
+    const checkPiSDK = async () => {
+      console.log('🔍 Checking Pi SDK...')
+      console.log('User Agent:', navigator.userAgent)
+      console.log('window.Pi exists:', !!window.Pi)
+      
+      // Wait for Pi SDK with timeout
+      let attempts = 0
+      const maxAttempts = 100  // Increased from 50
+      
+      while (!window.Pi && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+        attempts++
+      }
+      
+      if (window.Pi) {
+        console.log('✅ Pi SDK found after', attempts, 'attempts')
+        setPiSdkAvailable(true)
+        authenticatePi()
+      } else {
+        console.error('❌ Pi SDK not available after', maxAttempts, 'attempts')
+        setPiLoading(false)
+        setPiAuthError('Pi SDK not loaded. Please open in Pi Browser.')
+      }
+    }
+
     const authenticatePi = async () => {
       try {
-        let attempts = 0
-        const maxAttempts = 50
+        console.log('🔐 Starting Pi authentication...')
         
-        while (!window.Pi && attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 100))
-          attempts++
-        }
-        
-        if (!window.Pi) {
-          setPiLoading(false)
-          setPiAuthError('Please open this app in Pi Browser')
-          return
-        }
-
+        // Check if already authenticated (cached)
         const scopes = ['payments']
         
         const onIncompletePaymentFound = (payment) => {
-          console.log('🔄 Incomplete payment:', payment.identifier)
-          return payment
+          console.log('🔄 Incomplete payment found:', payment.identifier)
+          // Handle incomplete payment - complete it or cancel
+          return { action: 'cancel' } // or return payment to complete
         }
 
+        console.log('Calling Pi.authenticate...')
         const auth = await window.Pi.authenticate(scopes, onIncompletePaymentFound)
-        console.log('✅ Pi authenticated:', auth.user?.username)
+        
+        console.log('✅ Pi authentication successful:', auth)
+        console.log('User:', auth.user)
+        console.log('Username:', auth.user?.username)
+        
         setPiAuthenticated(true)
         setPiAuthError(null)
         
       } catch (error) {
-        console.error('❌ Authentication failed:', error)
-        setPiAuthError(error.message || 'Authentication failed')
+        console.error('❌ Pi authentication failed:', error)
+        console.error('Error name:', error.name)
+        console.error('Error message:', error.message)
+        
+        // More specific error messages
+        if (error.message?.includes('unauthorized')) {
+          setPiAuthError('Authentication failed. Please try again.')
+        } else if (error.message?.includes('network')) {
+          setPiAuthError('Network error. Check your connection.')
+        } else if (error.message?.includes('timeout')) {
+          setPiAuthError('Connection timeout. Please retry.')
+        } else {
+          setPiAuthError(error.message || 'Authentication failed')
+        }
+        
         setPiAuthenticated(false)
       } finally {
         setPiLoading(false)
       }
     }
-    authenticatePi()
+
+    checkPiSDK()
   }, [])
 
-  // ✅ ADD: Handle EGP payment
-  const handleEgpPayment = async () => {
-    try {
-      console.log('💰 Processing EGP payment...')
-      
-      // Generate order ID
-      const orderId = `order_egp_${Date.now()}`
-      
-      // Save order to Firebase with EGP flag
-      const orderData = {
-        orderId,
-        paymentMethod: 'egp', // ✅ Flag for EGP
-        paymentId: null, // No Pi payment ID
-        txid: null, // No blockchain txid
-        items: items.map(item => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity || 1
-        })),
-        totalPrice,
-        totalItems,
-        currency: 'EGP',
-        status: 'pending', // Pending manual confirmation
-        createdAt: serverTimestamp(),
-        notes: 'Cash on delivery or bank transfer'
-      }
-
-      const docRef = await addDoc(collection(db, 'orders'), orderData)
-      console.log('✅ EGP Order saved:', docRef.id)
-
-      alert(`✅ Order placed successfully!\nOrder ID: ${orderId}\nPayment: Cash on Delivery (EGP)\n\nOur team will contact you soon.`)
-      
-      clearCart()
-      navigate('/home')
-      
-    } catch (error) {
-      console.error('💥 EGP payment error:', error)
-      alert('❌ Failed to place order. Please try again.')
-    }
-  }
-
   const handleCheckout = async () => {
-    if (paymentMethod === 'egp') {
-      return handleEgpPayment()
-    }
-
-    // Pi Payment Flow
     if (!window.Pi) {
-      alert("❌ Please open this app in Pi Browser")
+      alert("❌ Pi SDK not available. Please open in Pi Browser.")
       return
     }
     if (!piAuthenticated) {
@@ -118,14 +105,18 @@ export default function CartPage() {
       return
     }
     
+    setIsProcessing(true)
+    
     try {
       console.log('💳 Starting Pi checkout...')
 
       const paymentData = {
-        amount: 0.1,
-        memo: `Order for ${totalItems} item(s)`,
+        amount: Number(totalPrice),
+        memo: `Louable Order - ${totalItems} item(s)`,
         metadata: {
-          purpose: "ecommerce_test"
+          app: "Louable",
+          itemCount: totalItems,
+          orderTime: new Date().toISOString()
         }
       }
 
@@ -210,11 +201,11 @@ export default function CartPage() {
               throw new Error(result.error || 'Completion failed')
             }
 
-            // 💾 Save to Firebase with PI flag
+            // Save to Firebase
             try {
               const orderData = {
-                orderId: result.orderId || `order_pi_${Date.now()}`,
-                paymentMethod: 'pi', // ✅ Flag for Pi
+                orderId: result.orderId || `order_${Date.now()}`,
+                paymentMethod: 'pi',
                 paymentId,
                 txid,
                 items: items.map(item => ({
@@ -227,33 +218,45 @@ export default function CartPage() {
                 totalItems,
                 currency: 'PI',
                 status: 'completed',
-                createdAt: serverTimestamp()
+                createdAt: serverTimestamp(),
+                userAgent: navigator.userAgent
               }
 
               const docRef = await addDoc(collection(db, 'orders'), orderData)
-              console.log('✅ Pi Order saved:', docRef.id)
+              console.log('✅ Order saved:', docRef.id)
               
               clearCart()
-              alert(`✅ Payment successful!\nTransaction ID: ${txid}\nOrder: ${orderData.orderId}`)
+              navigate('/order-success', { 
+                state: { 
+                  orderId: orderData.orderId,
+                  txid,
+                  totalPrice,
+                  items 
+                }
+              })
               
             } catch (firebaseError) {
               console.error('⚠️ Firebase error:', firebaseError)
-              alert(`✅ Paid but record failed. Save TXID: ${txid}`)
+              alert(`✅ Payment successful but record failed.\nTXID: ${txid}`)
+              setIsProcessing(false)
             }
             
           } catch (error) {
             console.error("💥 Completion error:", error)
             alert(`⚠️ Issue occurred. TXID: ${txid}`)
+            setIsProcessing(false)
           }
         },
         
         onCancel: (paymentId) => {
           console.log("❌ Cancelled:", paymentId)
+          setIsProcessing(false)
           alert("Payment cancelled")
         },
         
         onError: (error) => {
-          console.error("💥 Error:", error)
+          console.error("💥 Payment error:", error)
+          setIsProcessing(false)
           let msg = error.message || 'Unknown error'
           if (msg.includes('scope')) msg = 'Auth error. Restart app.'
           else if (msg.includes('network')) msg = 'Check connection.'
@@ -262,12 +265,39 @@ export default function CartPage() {
       }
 
       const payment = await window.Pi.createPayment(paymentData, callbacks)
-      console.log("💳 Created:", payment.identifier)
+      console.log("💳 Payment created:", payment.identifier)
       
     } catch (error) {
       console.error("🔥 Checkout error:", error)
       alert("❌ Failed: " + (error.message || 'Try again'))
+      setIsProcessing(false)
     }
+  }
+
+  // Debug info component
+  const DebugInfo = () => {
+    if (process.env.NODE_ENV === 'production') return null
+    
+    return (
+      <div style={{
+        position: 'fixed',
+        bottom: '10px',
+        left: '10px',
+        background: 'rgba(0,0,0,0.8)',
+        color: '#0f0',
+        padding: '10px',
+        borderRadius: '8px',
+        fontSize: '11px',
+        fontFamily: 'monospace',
+        zIndex: 9999,
+        maxWidth: '300px'
+      }}>
+        <div>Pi SDK: {piSdkAvailable ? '✅' : '❌'}</div>
+        <div>Authenticated: {piAuthenticated ? '✅' : '❌'}</div>
+        <div>Loading: {piLoading ? '⏳' : '✓'}</div>
+        <div>UA: {navigator.userAgent.slice(0, 50)}...</div>
+      </div>
+    )
   }
 
   const [windowWidth, setWindowWidth] = useState(
@@ -309,22 +339,41 @@ export default function CartPage() {
   const c = theme === 'light' ? colors.light : colors.dark
 
   const AuthStatus = () => {
-    if (typeof window === 'undefined' || !window.Pi) return null
+    // Don't show if Pi SDK not available
+    if (!piSdkAvailable && !piLoading) return null
+    
+    let bgColor = '#999'
+    let text = 'Checking...'
+    
+    if (piLoading) {
+      bgColor = '#FF9800'
+      text = '⏳ Connecting...'
+    } else if (piAuthenticated) {
+      bgColor = '#4CAF50'
+      text = '✅ Pi Connected'
+    } else if (piAuthError) {
+      bgColor = '#FF5252'
+      text = '❌ Connection Failed'
+    }
     
     return (
       <div style={{
         position: 'fixed',
         top: '10px',
         right: '10px',
-        padding: '8px 12px',
-        background: piAuthenticated ? '#4CAF50' : (piLoading ? '#FF9800' : '#FF5252'),
+        padding: '10px 16px',
+        background: bgColor,
         color: 'white',
-        borderRadius: '6px',
-        fontSize: '12px',
+        borderRadius: '8px',
+        fontSize: '13px',
+        fontWeight: '600',
         zIndex: 1000,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px'
       }}>
-        {piLoading ? '⏳ Connecting...' : (piAuthenticated ? '✅ Pi Connected' : '❌ Pi Failed')}
+        {text}
       </div>
     )
   }
@@ -342,6 +391,7 @@ export default function CartPage() {
         justifyContent: 'center'
       }}>
         <AuthStatus />
+        <DebugInfo />
         <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: 0.4 }}>🛒</div>
         <h2 style={{ fontSize: '1.8rem', marginBottom: '1rem', color: c.textDark }}>
           {t('emptyCart')}
@@ -364,6 +414,7 @@ export default function CartPage() {
       background: c.background, minHeight: '100vh'
     }}>
       <AuthStatus />
+      <DebugInfo />
       
       <div style={{ maxWidth: '950px', margin: '0 auto', paddingTop: '3rem' }}>
         <h2 style={{ 
@@ -373,50 +424,25 @@ export default function CartPage() {
           {t('cart')} ({totalItems})
         </h2>
 
-        {/* ✅ PAYMENT METHOD SELECTOR */}
-        <div style={{
-          padding: '1.5rem',
-          background: c.card,
-          borderRadius: '12px',
-          marginBottom: '1.5rem',
-          border: `2px solid ${c.secondary}40`
-        }}>
-          <h3 style={{ margin: '0 0 1rem 0', color: c.textDark, fontSize: '1.1rem' }}>
-            💳  Payment Method
-          </h3>
-          
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            {/* Pi Payment Option */}
-            <button
-              onClick={() => setPaymentMethod('pi')}
-              style={{
-                flex: 1,
-                minWidth: '140px',
-                padding: '1rem',
-                background: paymentMethod === 'pi' ? c.secondary : 'transparent',
-                color: paymentMethod === 'pi' ? '#fff' : c.textDark,
-                border: `2px solid ${c.secondary}`,
-                borderRadius: '10px',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '0.5rem',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              <span style={{ fontSize: '1.5rem' }}>π</span>
-              <span style={{ fontWeight: '700' }}>Pi Network</span>
-              <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>
-                Pay with Pi cryptocurrency
-              </span>
-            </button>
-
-            
-         
+        {/* Show error if Pi not available */}
+        {!piSdkAvailable && !piLoading && (
+          <div style={{
+            padding: '1.5rem',
+            background: '#ffebee',
+            borderRadius: '12px',
+            marginBottom: '1.5rem',
+            border: '2px solid #ef5350',
+            color: '#c62828',
+            textAlign: 'center'
+          }}>
+            <h3 style={{ margin: '0 0 0.5rem 0' }}>⚠️ Pi Browser Required</h3>
+            <p style={{ margin: 0 }}>
+              Please open this app in Pi Browser to make payments.
+            </p>
           </div>
-        </div>
+        )}
 
+        {/* Cart Items */}
         <div style={{ marginBottom: '2rem' }}>
           {items.map((item) => (
             <div key={item.id} style={{ 
@@ -424,16 +450,61 @@ export default function CartPage() {
               backgroundColor: c.card,
               borderRadius: '12px',
               marginBottom: '1rem',
-              border: `1px solid ${c.border}`
+              border: `1px solid ${c.border}`,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '1rem'
             }}>
-              <h3 style={{ margin: '0 0 0.5rem 0', color: c.textDark }}>{item.name}</h3>
-              <p style={{ color: c.secondary, fontSize: '1.2rem', fontWeight: '700', margin: 0 }}>
-                π  {item.price.toFixed(2)}
-              </p>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', color: c.textDark }}>{item.name}</h3>
+                <p style={{ color: c.secondary, fontSize: '1.2rem', fontWeight: '700', margin: 0 }}>
+                  π {item.price.toFixed(2)}
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                    disabled={item.quantity <= 1}
+                    style={{
+                      width: '32px', height: '32px',
+                      borderRadius: '50%', border: `2px solid ${c.border}`,
+                      background: c.card, color: c.textDark,
+                      fontWeight: '700', cursor: item.quantity <= 1 ? 'not-allowed' : 'pointer',
+                      opacity: item.quantity <= 1 ? 0.5 : 1
+                    }}
+                  >-</button>
+                  <span style={{ fontWeight: '700', minWidth: '24px', textAlign: 'center' }}>
+                    {item.quantity}
+                  </span>
+                  <button
+                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    style={{
+                      width: '32px', height: '32px',
+                      borderRadius: '50%', border: `2px solid ${c.border}`,
+                      background: c.card, color: c.textDark,
+                      fontWeight: '700', cursor: 'pointer'
+                    }}
+                  >+</button>
+                </div>
+                <button
+                  onClick={() => removeFromCart(item.id)}
+                  style={{
+                    background: c.danger, color: 'white',
+                    border: 'none', borderRadius: '8px',
+                    padding: '8px 12px', cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           ))}
         </div>
 
+        {/* Order Summary */}
         <div style={{
           padding: '2rem',
           background: c.card,
@@ -445,45 +516,58 @@ export default function CartPage() {
           <div style={{ 
             display: 'flex', justifyContent: 'space-between',
             fontSize: '1.5rem', fontWeight: '700',
-            color: c.textDark, marginBottom: '1.5rem'
+            color: c.textDark, marginBottom: '1.5rem',
+            paddingBottom: '1rem',
+            borderBottom: `2px solid ${c.border}`
           }}>
             <span>{t('total')}:</span>
-            <span style={{ color: c.secondary }}>${totalPrice.toFixed(2)}</span>
+            <span style={{ color: c.secondary }}>π {totalPrice.toFixed(2)}</span>
           </div>
 
-          {/* Dynamic Checkout Button */}
+          {/* Pi Checkout Button */}
           <button
             onClick={handleCheckout}
-            disabled={paymentMethod === 'pi' && (!piAuthenticated || piLoading)}
+            disabled={!piAuthenticated || piLoading || isProcessing || !piSdkAvailable}
             style={{
               width: '100%',
-              padding: '14px',
-              background: paymentMethod === 'pi' 
-                ? (piAuthenticated && !piLoading) 
-                  ? `linear-gradient(135deg, ${c.secondary} 0%, #B8860B 100%)`
-                  : '#999'
-                : `linear-gradient(135deg, ${c.success} 0%, #7CB342 100%)`,
+              padding: '16px',
+              background: (piAuthenticated && !piLoading && !isProcessing && piSdkAvailable)
+                ? `linear-gradient(135deg, ${c.secondary} 0%, #B8860B 100%)`
+                : '#999',
               color: 'white',
               border: 'none',
-              borderRadius: '10px',
+              borderRadius: '12px',
               fontWeight: '700',
-              fontSize: '1.1rem',
-              cursor: (paymentMethod === 'pi' && (!piAuthenticated || piLoading)) 
-                ? 'not-allowed' 
-                : 'pointer',
-              opacity: (paymentMethod === 'pi' && (!piAuthenticated || piLoading)) ? 0.6 : 1
+              fontSize: '1.2rem',
+              cursor: (piAuthenticated && !piLoading && !isProcessing && piSdkAvailable) ? 'pointer' : 'not-allowed',
+              opacity: (piAuthenticated && !piLoading && !isProcessing && piSdkAvailable) ? 1 : 0.6,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              transition: 'all 0.3s ease'
             }}
           >
-            {paymentMethod === 'pi' ? (
-              piLoading ? '⏳ Connecting...' : 
-              piAuthenticated ? `π ${t('checkout')} with Pi` : 
-              '❌ Pi Not Connected'
+            {isProcessing ? (
+              <>
+                <span style={{ animation: 'spin 1s linear infinite' }}>⏳</span>
+                Processing...
+              </>
+            ) : piLoading ? (
+              '⏳ Connecting to Pi...'
+            ) : !piSdkAvailable ? (
+              '❌ Open in Pi Browser'
+            ) : piAuthenticated ? (
+              <>
+                <span style={{ fontSize: '1.4rem' }}>π</span>
+                {t('checkout')} with Pi
+              </>
             ) : (
-              `💰 ${t('checkout')} with Cash (EGP)`
+              '❌ Pi Not Connected'
             )}
           </button>
           
-          {paymentMethod === 'pi' && piAuthError && (
+          {piAuthError && (
             <p style={{
               marginTop: '12px',
               color: c.danger,
@@ -495,6 +579,13 @@ export default function CartPage() {
           )}
         </div>
       </div>
+      
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   )
 }

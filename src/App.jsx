@@ -8,7 +8,7 @@ import AboutUs from './pages/AboutUs' // 👈 Add this import
  // 👈 new
 import PrivacyPolicy from './pages/PrivacyPolicy' // 👈 Add import
 import TermsOfService from './pages/TermsOfService';
-
+import OrderSuccess from './pages/OrderSuccess'
 
 function App() {
   return (
@@ -20,6 +20,7 @@ function App() {
       <Route path="/privacy" element={<PrivacyPolicy />} /> {/* 👈 Add this */}
       <Route path="/about" element={<AboutUs />} /> {/* 👈 Add this route */}
 <Route path="/terms-of-service" element={<TermsOfService />} />
+<Route path="/order-success" element={<OrderSuccess />} />
 
     </Routes>
   )
