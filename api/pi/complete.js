@@ -1,11 +1,14 @@
+// api/pi/complete.js
+import fetch from 'node-fetch'; // Use node-fetch for reliability
+
 export default async function handler(req, res) {
-  // CORS headers - MUST be first thing
+  // CORS headers - MUST be first
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
 
-  // Handle preflight immediately
+  // Handle preflight
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -15,7 +18,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Parse body safely
+    // Parse body
     let body = req.body;
     if (typeof body === 'string') {
       try {
@@ -38,6 +41,7 @@ export default async function handler(req, res) {
 
     const apiKey = process.env.PI_API_KEY;
     if (!apiKey) {
+      console.error('❌ PI_API_KEY not set');
       return res.status(500).json({ error: 'PI_API_KEY not configured' });
     }
 
@@ -48,15 +52,24 @@ export default async function handler(req, res) {
     const url = `${baseUrl}/v2/payments/${paymentId}/complete`;
     
     console.log('Calling Pi API:', url);
+    console.log('Environment:', isSandbox ? 'SANDBOX' : 'MAINNET');
+
+    // Use node-fetch with timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
 
     const piRes = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `Key ${apiKey}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
-      body: JSON.stringify({ txid })
-    });
+      body: JSON.stringify({ txid }),
+      signal: controller.signal
+    }).finally(() => clearTimeout(timeout));
+
+    console.log('Pi response status:', piRes.status);
 
     if (!piRes.ok) {
       const errText = await piRes.text();
@@ -69,9 +82,9 @@ export default async function handler(req, res) {
     }
 
     const piData = await piRes.json();
-    console.log('Pi success:', piData);
+    console.log('Pi success');
 
-    // Try to save to Firebase (don't fail if this errors)
+    // Try Firebase (optional)
     let firebaseId = null;
     try {
       const { db } = await import('../lib/firebase-admin.js');
@@ -91,8 +104,7 @@ export default async function handler(req, res) {
       firebaseId = docRef.id;
       console.log('Saved to Firebase:', firebaseId);
     } catch (fbError) {
-      console.error('Firebase error (non-critical):', fbError.message);
-      // Continue - payment was successful even if Firebase fails
+      console.error('Firebase error (continuing):', fbError.message);
     }
 
     return res.status(200).json({
@@ -107,7 +119,7 @@ export default async function handler(req, res) {
     console.error('Complete endpoint error:', error);
     return res.status(500).json({ 
       error: error.message,
-      type: error.constructor?.name
+      type: error.name || 'Error'
     });
   }
 }
