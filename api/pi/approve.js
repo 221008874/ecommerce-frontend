@@ -1,5 +1,8 @@
+// api/pi/approve.js
+import fetch from 'node-fetch';
+
 export default async function handler(req, res) {
-  // CORS headers first
+  // CORS headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -41,13 +44,18 @@ export default async function handler(req, res) {
     
     console.log('Calling Pi API:', url);
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
     const piRes = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `Key ${apiKey}`,
-        'Content-Type': 'application/json'
-      }
-    });
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      signal: controller.signal
+    }).finally(() => clearTimeout(timeout));
 
     if (!piRes.ok) {
       const errText = await piRes.text();
