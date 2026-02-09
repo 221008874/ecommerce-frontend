@@ -27,7 +27,7 @@ const getApiUrl = () => {
     return 'http://localhost:5173'; // Your Vite dev port
   }
   // Production - NO trailing space!
-  return 'https://ecommerce-frontend-tawny-psi.vercel.app';
+  return 'https://louable.vercel.app';
 };
 
 // Usage in fetch calls:
@@ -43,7 +43,7 @@ const apiUrl = getApiUrl();
         return false;
       }
 
-      const response = await fetch(`${apiUrl}/api/pi/complete`, {
+      const response = await fetch(`${apiUrl}/api/pi/complete-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -212,7 +212,7 @@ const apiUrl = getApiUrl();
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-            const response = await fetch(`${apiUrl}/api/pi/approve`, {
+            const response = await fetch(`${apiUrl}/api/pi/approve-payment`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ paymentId }),
@@ -243,7 +243,7 @@ const apiUrl = getApiUrl();
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-            const response = await fetch(`${apiUrl}/api/pi/complete`, {
+            const response = await fetch(`${apiUrl}/api/pi/complete-payment`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
