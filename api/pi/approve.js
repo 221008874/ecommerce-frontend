@@ -17,28 +17,42 @@ export default async function handler(req, res) {
   try {
     const { paymentId } = req.body;
     
-    console.log('📝 Approve:', { paymentId });
+    console.log('📝 Approve called with:', { paymentId });
 
     if (!paymentId) {
+      console.error('❌ Missing paymentId');
       return res.status(400).json({ error: 'Missing paymentId' });
     }
 
     const apiKey = process.env.PI_API_KEY;
+    
+    // 🔍 DEBUG: Log API key info (safely)
+    console.log('🔍 API Key exists:', !!apiKey);
+    console.log('🔍 API Key length:', apiKey?.length);
+    console.log('🔍 API Key starts with sandbox:', apiKey?.startsWith('sandbox_'));
+    console.log('🔍 API Key first 10 chars:', apiKey?.substring(0, 10));
+    
     if (!apiKey) {
       console.error('❌ PI_API_KEY not set');
       return res.status(500).json({ error: 'PI_API_KEY not set' });
     }
 
-    // ✅ FIXED: No trailing spaces
     const isSandbox = apiKey.startsWith('sandbox_');
     const baseUrl = isSandbox 
-      ? 'https://api.sandbox.minepi.com'  // ✅ No space
-      : 'https://api.minepi.com';         // ✅ No space
+      ? 'https://api.sandbox.minepi.com'
+      : 'https://api.minepi.com';
     
     const url = `${baseUrl}/v2/payments/${paymentId}/approve`;
     
     console.log('🌐 Environment:', isSandbox ? 'TESTNET' : 'MAINNET');
-    console.log('🌐 API URL:', url);
+    console.log('🌐 Full URL:', url);
+
+    // 🔍 DEBUG: Log the exact request we're about to make
+    console.log('📤 Sending request to Pi API...');
+    console.log('📤 Headers:', {
+      'Authorization': `Key ${apiKey.substring(0, 10)}...`,
+      'Content-Type': 'application/json'
+    });
 
     const piResponse = await fetch(url, {
       method: 'POST',
@@ -48,11 +62,17 @@ export default async function handler(req, res) {
       }
     });
 
+    console.log('📥 Pi API response status:', piResponse.status);
+    console.log('📥 Pi API response ok:', piResponse.ok);
+
     const responseText = await piResponse.text();
     
+    // 🔍 DEBUG: Log raw response
+    console.log('📥 Raw response text:', responseText);
+
     if (piResponse.ok) {
       const result = JSON.parse(responseText);
-      console.log('✅ Approved:', result);
+      console.log('✅ Success:', result);
       return res.json({ 
         success: true,
         status: 'approved',
@@ -61,18 +81,21 @@ export default async function handler(req, res) {
         data: result 
       });
     } else {
-      console.error('❌ Pi API error:', responseText);
+      // 🔍 DEBUG: Log detailed error
+      console.error('❌ Pi API error:', {
+        status: piResponse.status,
+        statusText: piResponse.statusText,
+        body: responseText
+      });
+      
       return res.status(piResponse.status).json({ 
         error: 'Pi approval failed',
+        status: piResponse.status,
         details: responseText 
       });
     }
   } catch (error) {
-    console.error('💥 Error:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('💥 Exception:', error);
+    return res.status(500).json({ error: error.message, stack: error.stack });
   }
 }
-
-export const config = {
-  api: { bodyParser: true }
-};
