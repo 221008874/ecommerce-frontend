@@ -1,5 +1,5 @@
 // src/pages/ProductDetail_RESPONSIVE.jsx
-// Enhanced version with improved responsive design
+// Enhanced version with improved responsive design and STOCK MANAGEMENT
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
@@ -15,6 +15,7 @@ export default function ProductDetail() {
   const { addToCart } = useCart()
   const { theme, getImage } = useTheme()
   const [product, setProduct] = useState(null)
+  const [quantity, setQuantity] = useState(1)
 
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1024
@@ -38,6 +39,8 @@ export default function ProductDetail() {
       textDark: '#2E1B1B',
       textLight: '#6B5E57',
       success: '#8BC34A',
+      danger: '#EF4444',
+      warning: '#F59E0B',
       accent: '#5D4037',
       border: '#E8DDD4'
     },
@@ -49,6 +52,8 @@ export default function ProductDetail() {
       textDark: '#F8F4F0',
       textLight: '#C4B5AD',
       success: '#8BC34A',
+      danger: '#EF4444',
+      warning: '#F59E0B',
       accent: '#5D4037',
       border: '#3E2723'
     }
@@ -78,6 +83,12 @@ export default function ProductDetail() {
     }
     fetchProduct()
   }, [id, navigate])
+
+  // Stock calculations
+  const stock = product?.stock || 0
+  const isOutOfStock = stock <= 0
+  const isLowStock = stock > 0 && stock < 10
+  const canAddToCart = stock >= quantity
 
   if (!product) {
     return (
@@ -131,12 +142,18 @@ export default function ProductDetail() {
   }
 
   const handleAddToCart = () => {
-    addToCart(product)
+    if (isOutOfStock || !canAddToCart) return
+    
+    // Add multiple quantities if selected
+    for (let i = 0; i < quantity; i++) {
+      addToCart(product)
+    }
+    
     const successMsg = document.createElement('div')
     successMsg.innerHTML = `
       <div style="display: flex; align-items: center; gap: 12px;">
         <span style="font-size: 1.5rem;">✓</span>
-        <span>Added to cart!</span>
+        <span>${quantity} item(s) added to cart!</span>
       </div>
     `
     successMsg.style.cssText = `
@@ -149,7 +166,7 @@ export default function ProductDetail() {
       padding: ${isMobile ? '14px 24px' : '16px 32px'};
       borderRadius: 12px;
       font-weight: 700;
-      box-shadow: 0 8px 24px rgba(139, 195, 74, 0.5);
+      boxShadow: 0 8px 24px rgba(139, 195, 74, 0.5);
       z-index: 1000;
       animation: slideInBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
       font-size: ${isMobile ? '0.9rem' : 'clamp(0.95rem, 3vw, 1.05rem)'};
@@ -245,7 +262,8 @@ export default function ProductDetail() {
             ? '0 8px 32px rgba(62, 39, 35, 0.12)'
             : '0 8px 32px rgba(0, 0, 0, 0.4)',
           position: 'relative',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          opacity: isOutOfStock ? 0.9 : 1
         }}>
           {/* Decorative background */}
           {!isMobile && (
@@ -261,6 +279,69 @@ export default function ProductDetail() {
               pointerEvents: 'none'
             }}></div>
           )}
+
+          {/* Stock Badge - Top Right */}
+          <div style={{
+            position: 'absolute',
+            top: isMobile ? '16px' : '24px',
+            right: isMobile ? '16px' : '24px',
+            zIndex: 10
+          }}>
+            {isOutOfStock ? (
+              <span style={{
+                background: 'linear-gradient(135deg, #EF4444, #DC2626)',
+                color: '#FFFFFF',
+                padding: isMobile ? '10px 16px' : '12px 20px',
+                borderRadius: '24px',
+                fontSize: isMobile ? '0.85rem' : '0.95rem',
+                fontWeight: '800',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                boxShadow: '0 6px 20px rgba(239, 68, 68, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <span>❌</span>
+                Out of Stock
+              </span>
+            ) : isLowStock ? (
+              <span style={{
+                background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                color: '#FFFFFF',
+                padding: isMobile ? '10px 16px' : '12px 20px',
+                borderRadius: '24px',
+                fontSize: isMobile ? '0.85rem' : '0.95rem',
+                fontWeight: '800',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                boxShadow: '0 6px 20px rgba(245, 158, 11, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                animation: 'pulse 2s ease-in-out infinite'
+              }}>
+                <span>⚡</span>
+                Only {stock} left!
+              </span>
+            ) : (
+              <span style={{
+                background: 'linear-gradient(135deg, #10B981, #059669)',
+                color: '#FFFFFF',
+                padding: isMobile ? '10px 16px' : '12px 20px',
+                borderRadius: '24px',
+                fontSize: isMobile ? '0.85rem' : '0.95rem',
+                fontWeight: '700',
+                boxShadow: '0 6px 20px rgba(16, 185, 129, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <span>✓</span>
+                In Stock: {stock}
+              </span>
+            )}
+          </div>
 
           {/* Product Image */}
           {product?.imageUrl ? (
@@ -279,13 +360,39 @@ export default function ProductDetail() {
                 style={{
                   width: '100%',
                   height: 'auto',
-                  // IMPROVED: Better mobile image height
                   maxHeight: isMobile ? 'clamp(300px, 50vh, 400px)' : 'clamp(350px, 55vw, 450px)',
                   objectFit: 'cover',
                   borderRadius: isMobile ? '10px' : 'clamp(12px, 2.5vw, 16px)',
-                  filter: theme === 'dark' ? 'brightness(0.95)' : 'brightness(1)'
+                  filter: isOutOfStock ? 'grayscale(0.6)' : 'brightness(1)'
                 }}
               />
+              
+              {/* Out of Stock Overlay */}
+              {isOutOfStock && (
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'rgba(0, 0, 0, 0.6)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <span style={{
+                    background: 'linear-gradient(135deg, #EF4444, #DC2626)',
+                    color: '#FFFFFF',
+                    padding: isMobile ? '16px 32px' : '24px 48px',
+                    borderRadius: '12px',
+                    fontWeight: '900',
+                    fontSize: isMobile ? '1.2rem' : '1.8rem',
+                    transform: 'rotate(-10deg)',
+                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '2px'
+                  }}>
+                    OUT OF STOCK
+                  </span>
+                </div>
+              )}
               
               {/* Gradient overlay */}
               <div style={{
@@ -302,8 +409,8 @@ export default function ProductDetail() {
               <div style={{
                 position: 'absolute',
                 top: isMobile ? '12px' : 'clamp(16px, 3.5vw, 20px)',
-                right: lang === 'ar' ? 'auto' : (isMobile ? '12px' : 'clamp(16px, 3.5vw, 20px)'),
-                left: lang === 'ar' ? (isMobile ? '12px' : 'clamp(16px, 3.5vw, 20px)') : 'auto',
+                left: lang === 'ar' ? 'auto' : (isMobile ? '12px' : 'clamp(16px, 3.5vw, 20px)'),
+                right: lang === 'ar' ? (isMobile ? '12px' : 'clamp(16px, 3.5vw, 20px)') : 'auto',
                 background: 'linear-gradient(135deg, #FFD700, #D4A017)',
                 color: '#FFFFFF',
                 padding: isMobile ? '6px 12px' : 'clamp(8px, 2vw, 10px) clamp(16px, 3.5vw, 20px)',
@@ -338,8 +445,32 @@ export default function ProductDetail() {
               fontSize: isMobile ? '3.5rem' : 'clamp(5rem, 15vw, 7rem)',
               border: `2px solid ${c.border}`,
               position: 'relative',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              opacity: isOutOfStock ? 0.7 : 1
             }}>
+              {isOutOfStock && (
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 10
+                }}>
+                  <span style={{
+                    background: '#EF4444',
+                    color: '#FFFFFF',
+                    padding: '16px 32px',
+                    borderRadius: '8px',
+                    fontWeight: '800',
+                    fontSize: '1.2rem',
+                    transform: 'rotate(-10deg)'
+                  }}>
+                    OUT OF STOCK
+                  </span>
+                </div>
+              )}
               <div style={{
                 position: 'absolute',
                 inset: 0,
@@ -397,7 +528,7 @@ export default function ProductDetail() {
                   margin: 0,
                   textShadow: theme === 'dark' ? '0 2px 8px rgba(212, 160, 23, 0.4)' : 'none'
                 }}>
-                  π   {product.price.toFixed(2)}
+                  π {product.price.toFixed(2)}
                 </p>
               </div>
               
@@ -425,6 +556,112 @@ export default function ProductDetail() {
                   5.0
                 </span>
               </div>
+            </div>
+
+            {/* Stock Info Box */}
+            <div style={{
+              background: isOutOfStock 
+                ? 'linear-gradient(135deg, #FEE2E2, #FECACA)'
+                : isLowStock
+                  ? 'linear-gradient(135deg, #FEF3C7, #FDE68A)'
+                  : 'linear-gradient(135deg, #D1FAE5, #A7F3D0)',
+              padding: isMobile ? '16px' : 'clamp(16px, 4vw, 20px)',
+              borderRadius: '12px',
+              marginBottom: isMobile ? '16px' : 'clamp(20px, 4vw, 24px)',
+              border: `2px solid ${isOutOfStock ? '#EF4444' : isLowStock ? '#F59E0B' : '#10B981'}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: isMobile ? '1.5rem' : '2rem' }}>
+                  {isOutOfStock ? '❌' : isLowStock ? '⚡' : '✓'}
+                </span>
+                <div>
+                  <p style={{
+                    margin: 0,
+                    fontWeight: '800',
+                    fontSize: isMobile ? '1rem' : '1.1rem',
+                    color: isOutOfStock ? '#991B1B' : isLowStock ? '#92400E' : '#065F46'
+                  }}>
+                    {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock Alert' : 'Available in Stock'}
+                  </p>
+                  <p style={{
+                    margin: '4px 0 0 0',
+                    fontSize: isMobile ? '0.9rem' : '0.95rem',
+                    color: isOutOfStock ? '#B91C1C' : isLowStock ? '#B45309' : '#047857'
+                  }}>
+                    {isOutOfStock 
+                      ? 'This item is currently unavailable' 
+                      : `${stock} units available for purchase`}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Quantity Selector */}
+              {!isOutOfStock && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  background: '#FFFFFF',
+                  padding: '8px',
+                  borderRadius: '10px',
+                  border: `2px solid ${c.border}`
+                }}>
+                  <button
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    disabled={quantity <= 1}
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: quantity <= 1 ? '#E5E7EB' : c.primary,
+                      color: quantity <= 1 ? '#9CA3AF' : '#FFFFFF',
+                      fontSize: '1.2rem',
+                      fontWeight: '700',
+                      cursor: quantity <= 1 ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    −
+                  </button>
+                  <span style={{
+                    fontSize: '1.1rem',
+                    fontWeight: '800',
+                    minWidth: '40px',
+                    textAlign: 'center',
+                    color: c.textDark
+                  }}>
+                    {quantity}
+                  </span>
+                  <button
+                    onClick={() => setQuantity(Math.min(stock, quantity + 1))}
+                    disabled={quantity >= stock}
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: quantity >= stock ? '#E5E7EB' : c.primary,
+                      color: quantity >= stock ? '#9CA3AF' : '#FFFFFF',
+                      fontSize: '1.2rem',
+                      fontWeight: '700',
+                      cursor: quantity >= stock ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Pieces Per Box */}
@@ -553,27 +790,35 @@ export default function ProductDetail() {
             }}>
               <button
                 onClick={handleAddToCart}
+                disabled={isOutOfStock || !canAddToCart}
                 style={{
                   flex: isMobile ? 'none' : 1,
                   width: isMobile ? '100%' : 'auto',
                   minWidth: isMobile ? 'auto' : 'clamp(180px, 45vw, 220px)',
                   padding: isMobile ? '14px 20px' : 'clamp(14px, 3.5vw, 20px) clamp(24px, 5vw, 32px)',
-                  background: `linear-gradient(135deg, ${c.success} 0%, #7CB342 100%)`,
+                  background: isOutOfStock 
+                    ? '#9CA3AF'
+                    : !canAddToCart
+                      ? '#F59E0B'
+                      : `linear-gradient(135deg, ${c.success} 0%, #7CB342 100%)`,
                   color: 'white',
                   border: 'none',
                   borderRadius: isMobile ? '10px' : 'clamp(8px, 2vw, 12px)',
                   fontWeight: '700',
-                  cursor: 'pointer',
+                  cursor: (isOutOfStock || !canAddToCart) ? 'not-allowed' : 'pointer',
                   fontSize: isMobile ? '1rem' : 'clamp(1rem, 3.5vw, 1.2rem)',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  boxShadow: '0 6px 20px rgba(139, 195, 74, 0.4)',
+                  boxShadow: isOutOfStock 
+                    ? 'none'
+                    : '0 6px 20px rgba(139, 195, 74, 0.4)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '10px'
+                  gap: '10px',
+                  opacity: (isOutOfStock || !canAddToCart) ? 0.7 : 1
                 }}
                 onMouseEnter={(e) => {
-                  if (windowWidth >= 768) {
+                  if (windowWidth >= 768 && !isOutOfStock && canAddToCart) {
                     e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)'
                     e.currentTarget.style.boxShadow = '0 10px 30px rgba(139, 195, 74, 0.5)'
                   }
@@ -581,18 +826,28 @@ export default function ProductDetail() {
                 onMouseLeave={(e) => {
                   if (windowWidth >= 768) {
                     e.currentTarget.style.transform = 'translateY(0) scale(1)'
-                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(139, 195, 74, 0.4)'
+                    e.currentTarget.style.boxShadow = isOutOfStock 
+                      ? 'none'
+                      : '0 6px 20px rgba(139, 195, 74, 0.4)'
                   }
                 }}
                 onTouchStart={(e) => {
-                  e.currentTarget.style.transform = 'scale(0.96)'
+                  if (!isOutOfStock && canAddToCart) {
+                    e.currentTarget.style.transform = 'scale(0.96)'
+                  }
                 }}
                 onTouchEnd={(e) => {
                   e.currentTarget.style.transform = 'scale(1)'
                 }}
               >
-                <span style={{ fontSize: '1.3rem' }}>✓</span>
-                {t('addToCart')}
+                <span style={{ fontSize: '1.3rem' }}>
+                  {isOutOfStock ? '🚫' : !canAddToCart ? '⚠️' : '✓'}
+                </span>
+                {isOutOfStock 
+                  ? 'Out of Stock' 
+                  : !canAddToCart 
+                    ? `Only ${stock} Available`
+                    : `Add ${quantity} to Cart`}
               </button>
               
               <button
