@@ -318,44 +318,7 @@ export default function ProductCard({ product }) {
               π {product.price?.toFixed(2)}
             </span>
             
-            <button
-              onClick={handleAddToCart}
-              disabled={isOutOfStock}
-              style={{
-                padding: '10px 20px',
-                background: isOutOfStock 
-                  ? '#9CA3AF'
-                  : `linear-gradient(135deg, ${c.success} 0%, #7CB342 100%)`,
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontWeight: '700',
-                fontSize: '0.9rem',
-                cursor: isOutOfStock ? 'not-allowed' : 'pointer',
-                transition: 'all 0.3s ease',
-                boxShadow: isOutOfStock 
-                  ? 'none'
-                  : '0 4px 12px rgba(139, 195, 74, 0.4)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                opacity: isOutOfStock ? 0.7 : 1
-              }}
-              onMouseEnter={(e) => {
-                if (!isOutOfStock) {
-                  e.currentTarget.style.transform = 'scale(1.05)'
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(139, 195, 74, 0.5)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)'
-                e.currentTarget.style.boxShadow = isOutOfStock 
-                  ? 'none'
-                  : '0 4px 12px rgba(139, 195, 74, 0.4)'
-              }}
-            >
-              {isOutOfStock ? '🚫' : '+'} {addToCartText}
-            </button>
+            
           </div>
 
           {/* Pieces per box info */}
