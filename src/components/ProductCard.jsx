@@ -4,10 +4,46 @@ import { useTheme } from '../context/ThemeContext'
 import { useCart } from '../context/CartContext'
 import { Link } from 'react-router-dom'
 
+// Safe translation helper
+const safeT = (t, key, fallback = '') => {
+  if (typeof t === 'function') {
+    try {
+      return t(key) || fallback
+    } catch (e) {
+      return fallback
+    }
+  }
+  return fallback
+}
+
 export default function ProductCard({ product }) {
-  const { t, lang } = useLanguage()
-  const { theme } = useTheme()
-  const { addToCart } = useCart()
+  // Defensive hooks - wrap in try-catch to prevent crashes
+  let t = (key) => key
+  let lang = 'en'
+  let theme = 'light'
+  let addToCart = () => {}
+  
+  try {
+    const languageContext = useLanguage()
+    t = languageContext.t || ((key) => key)
+    lang = languageContext.lang || 'en'
+  } catch (e) {
+    console.warn('LanguageContext not available')
+  }
+  
+  try {
+    const themeContext = useTheme()
+    theme = themeContext.theme || 'light'
+  } catch (e) {
+    console.warn('ThemeContext not available')
+  }
+  
+  try {
+    const cartContext = useCart()
+    addToCart = cartContext.addToCart || (() => {})
+  } catch (e) {
+    console.warn('CartContext not available')
+  }
 
   const colors = {
     light: {
@@ -36,7 +72,7 @@ export default function ProductCard({ product }) {
     }
   }
 
-  const c = theme === 'light' ? colors.light : colors.dark
+  const c = colors[theme] || colors.light
 
   // Stock calculations
   const stock = product?.stock || 0
@@ -56,7 +92,7 @@ export default function ProductCard({ product }) {
     successMsg.innerHTML = `
       <div style="display: flex; align-items: center; gap: 12px;">
         <span style="font-size: 1.5rem;">✓</span>
-        <span>${t('addedToCart')}</span>
+        <span>${safeT(t, 'addedToCart', 'Added to cart')}</span>
       </div>
     `
     successMsg.style.cssText = `
@@ -81,6 +117,13 @@ export default function ProductCard({ product }) {
       setTimeout(() => successMsg.remove(), 300)
     }, 2000)
   }
+
+  // Safe translation calls
+  const outOfStockText = safeT(t, 'outOfStock', 'Out of Stock')
+  const onlyLeftText = safeT(t, 'onlyLeft', 'Only {count} left!').replace('{count}', stock)
+  const inStockText = safeT(t, 'inStock', 'In Stock: {count}').replace('{count}', stock)
+  const addToCartText = safeT(t, 'addToCart', 'Add to Cart')
+  const piecesText = safeT(t, 'pieces', 'pieces')
 
   return (
     <Link
@@ -141,7 +184,7 @@ export default function ProductCard({ product }) {
               letterSpacing: '0.5px',
               boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)'
             }}>
-              {t('outOfStock')}
+              {outOfStockText}
             </span>
           ) : isLowStock ? (
             <span style={{
@@ -156,7 +199,7 @@ export default function ProductCard({ product }) {
               boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)',
               animation: 'pulse 2s ease-in-out infinite'
             }}>
-              {t('onlyLeft', { count: stock })}
+              {onlyLeftText}
             </span>
           ) : (
             <span style={{
@@ -168,7 +211,7 @@ export default function ProductCard({ product }) {
               fontWeight: '700',
               boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
             }}>
-              {t('inStock', { count: stock })}
+              {inStockText}
             </span>
           )}
         </div>
@@ -236,7 +279,7 @@ export default function ProductCard({ product }) {
                 fontSize: '1rem',
                 transform: 'rotate(-10deg)'
               }}>
-                {t('outOfStock')}
+                {outOfStockText}
               </span>
             </div>
           )}
@@ -311,7 +354,7 @@ export default function ProductCard({ product }) {
                   : '0 4px 12px rgba(139, 195, 74, 0.4)'
               }}
             >
-              {isOutOfStock ? '🚫' : '+'} {t('addToCart')}
+              {isOutOfStock ? '🚫' : '+'} {addToCartText}
             </button>
           </div>
 
@@ -324,7 +367,7 @@ export default function ProductCard({ product }) {
             color: c.textLight
           }}>
             <span>📦</span>
-            <span>{product.piecesPerBox} {t('pieces')}</span>
+            <span>{product.piecesPerBox} {piecesText}</span>
           </div>
         </div>
       </div>
