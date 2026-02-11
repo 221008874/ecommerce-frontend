@@ -918,6 +918,19 @@ export default function CartPage() {
               }}>
                 <span>{t('subtotal')} ({totalItems} {totalItems === 1 ? t('item') : t('items')})</span>
                 <span>π {totalPrice.toFixed(2)}</span>
+
+                <button onClick={() => navigate('/home')} style={{
+          padding: '12px 32px',
+          background: c.success,
+          color: '#FFF',
+          border: 'none',
+          borderRadius: '10px',
+          fontWeight: '700',
+          fontSize: '1rem',
+          cursor: 'pointer'
+        }}>
+          🛍️ {t('continueShopping')}
+        </button>
               </div>
               <div style={{ 
                 display: 'flex',
