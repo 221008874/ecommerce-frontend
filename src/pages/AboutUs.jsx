@@ -272,16 +272,17 @@ export default function AboutUs() {
             }}></div>
           </h2>
 
-          <p style={{
-            fontSize: isMobile ? '0.95rem' : 'clamp(1rem, 3vw, 1.2rem)',
-            color: c.textLight,
-            lineHeight: 1.8,
-            textAlign: isMobile ? 'center' : (lang === 'ar' ? 'right' : 'left'),
-            marginBottom: 0
-          }}>
-            Welcome to Louable, where passion meets perfection in every chocolate creation. 
-            We believe in crafting moments of pure joy through our premium chocolate collection.
-          </p>
+                     <p style={{
+              fontSize: isMobile ? '0.95rem' : 'clamp(1rem, 3vw, 1.2rem)',
+              color: c.textLight,
+              lineHeight: 1.7,
+              maxWidth: isMobile ? '100%' : '600px',
+              margin: '0 auto',
+              marginBottom: isMobile ? '20px' : 'clamp(24px, 5vw, 32px)',
+              padding: isMobile ? '0 0.5rem' : '0'
+            }}>
+              {t('experienceFinest')}
+            </p>
         </div>
 
         {/* Mission, Vision, Values Cards */}
@@ -438,13 +439,13 @@ export default function AboutUs() {
             }}>
               🎉
             </div>
-            <h3 style={{
+                       <h3 style={{
               fontSize: isMobile ? '1.4rem' : 'clamp(1.5rem, 5vw, 2rem)',
               fontWeight: '700',
               color: c.textDark,
               marginBottom: isMobile ? '10px' : 'clamp(12px, 3vw, 16px)'
             }}>
-              Join Our Sweet Journey
+              {t('joinOurSweetJourney')}
             </h3>
             <p style={{
               fontSize: isMobile ? '0.95rem' : 'clamp(1rem, 3vw, 1.2rem)',
