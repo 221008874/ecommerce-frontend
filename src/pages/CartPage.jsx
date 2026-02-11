@@ -1,3 +1,4 @@
+// src/pages/CartPage.jsx
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
@@ -18,7 +19,7 @@ export default function CartPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [pendingPayment, setPendingPayment] = useState(null)
   
-  // NEW: State for enhanced product display and stock validation
+  // State for enhanced product display and stock validation
   const [productDetails, setProductDetails] = useState({})
   const [stockErrors, setStockErrors] = useState({})
   const [isUpdating, setIsUpdating] = useState({})
@@ -33,7 +34,7 @@ export default function CartPage() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // NEW: Fetch current product details including stock
+  // Fetch current product details including stock
   useEffect(() => {
     const fetchProductDetails = async () => {
       const details = {}
@@ -54,13 +55,13 @@ export default function CartPage() {
                 type: 'INSUFFICIENT_STOCK',
                 available: data.stock,
                 requested: item.quantity,
-                message: `Only ${data.stock} available (you have ${item.quantity} in cart)`
+                message: t('onlyAvailable', { count: data.stock })
               }
             }
           } else {
             errors[item.id] = {
               type: 'PRODUCT_NOT_FOUND',
-              message: 'Product no longer available'
+              message: t('productNotAvailable')
             }
           }
         } catch (err) {
@@ -75,7 +76,7 @@ export default function CartPage() {
     if (items.length > 0) {
       fetchProductDetails()
     }
-  }, [items])
+  }, [items, t])
 
   const getApiUrl = () => {
     return 'https://elhamd-industries.vercel.app/'; // Always Vercel, no spaces!
@@ -127,7 +128,9 @@ export default function CartPage() {
           
           setPendingPayment(null);
           clearCart();
-          navigate('/order-success');
+          navigate('/order-success', {
+            state: { orderId: payment.identifier, txid, totalPrice: payment.amount, items }
+          });
           return true;
         }
         
@@ -155,7 +158,9 @@ export default function CartPage() {
       
       setPendingPayment(null);
       clearCart();
-      navigate('/order-success');
+      navigate('/order-success', {
+        state: { orderId: payment.identifier, txid, totalPrice: payment.amount, items }
+      });
       return true;
       
     } catch (error) {
@@ -178,7 +183,7 @@ export default function CartPage() {
         
         if (!window.Pi) {
           setPiLoading(false)
-          setPiAuthError('Please open this app in Pi Browser')
+          setPiAuthError(t('piBrowserRequired'))
           return
         }
 
@@ -200,14 +205,14 @@ export default function CartPage() {
         
       } catch (error) {
         console.error('❌ Authentication failed:', error)
-        setPiAuthError(error.message || 'Authentication failed')
+        setPiAuthError(error.message || t('authFailed'))
         setPiAuthenticated(false)
       } finally {
         setPiLoading(false)
       }
     }
     authenticatePi()
-  }, [])
+  }, [t])
 
   const handleCompletePending = async () => {
     if (!pendingPayment) return;
@@ -218,27 +223,27 @@ export default function CartPage() {
 
   const handleCheckout = async () => {
     if (!window.Pi) {
-      alert('Pi not initialized. Please open in Pi Browser.');
+      alert(t('piBrowserRequired'));
       return;
     }
 
     if (isProcessing) {
-      alert('Payment already in progress. Please wait...');
+      alert(t('paymentInProgress'));
       return;
     }
 
     if (pendingPayment) {
-      const shouldComplete = confirm('You have a pending payment. Complete it first?');
+      const shouldComplete = confirm(t('completePendingPayment'));
       if (shouldComplete) {
         await handleCompletePending();
       }
       return;
     }
 
-    // NEW: Validate stock before checkout
+    // Validate stock before checkout
     const hasStockErrors = Object.keys(stockErrors).length > 0
     if (hasStockErrors) {
-      alert('Please resolve stock issues before checkout')
+      alert(t('resolveStockIssues'))
       return
     }
 
@@ -285,7 +290,7 @@ export default function CartPage() {
             
           } catch (error) {
             console.error('💥 Approval error:', error);
-            alert('❌ Approval failed: ' + error.message);
+            alert(t('approvalFailed') + ': ' + error.message);
             throw error;
           }
         },
@@ -343,7 +348,7 @@ export default function CartPage() {
             
           } catch (error) {
             console.error('💥 Completion error:', error);
-            alert('⚠️ Payment completed but order save failed. TXID: ' + txid);
+            alert(t('paymentCompletedButSaveFailed') + ': ' + txid);
             setIsProcessing(false);
           }
         },
@@ -351,7 +356,7 @@ export default function CartPage() {
         onCancel: (paymentId) => {
           console.log('❌ Payment cancelled:', paymentId);
           setIsProcessing(false);
-          alert('Payment cancelled');
+          alert(t('paymentCancelled'));
         },
 
         onError: (error, payment) => {
@@ -359,9 +364,9 @@ export default function CartPage() {
           setIsProcessing(false);
           
           if (error.message?.includes('pending payment')) {
-            alert('⚠️ You have a pending payment. Please complete it first.');
+            alert(t('pendingPaymentExists'));
           } else {
-            alert('❌ Payment failed: ' + (error.message || 'Unknown error'));
+            alert(t('paymentFailed') + ': ' + (error.message || 'Unknown error'));
           }
         }
       };
@@ -371,12 +376,12 @@ export default function CartPage() {
 
     } catch (error) {
       console.error('🔥 Checkout error:', error);
-      alert('❌ Checkout failed: ' + (error.message || 'Please try again'));
+      alert(t('checkoutFailed') + ': ' + (error.message || t('tryAgain')));
       setIsProcessing(false);
     }
   };
 
-  // NEW: Enhanced quantity update with stock validation
+  // Enhanced quantity update with stock validation
   const handleQuantityUpdate = async (item, newQuantity) => {
     if (newQuantity < 1) {
       removeFromCart(item.id)
@@ -399,7 +404,7 @@ export default function CartPage() {
           type: 'INSUFFICIENT_STOCK',
           available: availableStock,
           requested: newQuantity,
-          message: `Only ${availableStock} available`
+          message: t('onlyAvailable', { count: availableStock })
         }
       }))
     } else {
@@ -460,12 +465,12 @@ export default function CartPage() {
         zIndex: 1000,
         boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
       }}>
-        {piLoading ? '⏳ Connecting...' : (piAuthenticated ? '✅ Pi Connected' : '❌ Pi Failed')}
+        {piLoading ? '⏳ ' + t('connecting') : (piAuthenticated ? '✅ ' + t('piConnected') : '❌ ' + t('piFailed'))}
       </div>
     )
   }
 
-  // NEW: Cart Error Display
+  // Cart Error Display
   const CartErrorBanner = () => {
     if (!cartError && Object.keys(stockErrors).length === 0) return null
     
@@ -478,7 +483,7 @@ export default function CartPage() {
         marginBottom: '1.5rem',
         color: '#991B1B'
       }}>
-        <h4 style={{ margin: '0 0 8px 0', fontSize: '1rem' }}>⚠️ Stock Issues Detected</h4>
+        <h4 style={{ margin: '0 0 8px 0', fontSize: '1rem' }}>⚠️ {t('stockIssuesDetected')}</h4>
         {cartError && <p style={{ margin: '0 0 8px 0', fontSize: '0.9rem' }}>{cartError.message}</p>}
         {Object.entries(stockErrors).map(([id, error]) => (
           <p key={id} style={{ margin: '4px 0', fontSize: '0.85rem' }}>
@@ -498,7 +503,7 @@ export default function CartPage() {
             cursor: 'pointer'
           }}
         >
-          Dismiss
+          {t('dismiss')}
         </button>
       </div>
     )
@@ -523,7 +528,7 @@ export default function CartPage() {
           marginBottom: '1rem', 
           color: c.textDark 
         }}>
-          {t('emptyCart') || 'Your cart is empty'}
+          {t('emptyCart')}
         </h2>
         <button onClick={() => navigate('/home')} style={{
           padding: '12px 32px',
@@ -535,7 +540,7 @@ export default function CartPage() {
           fontSize: '1rem',
           cursor: 'pointer'
         }}>
-          🛍️ {t('continueShopping') || 'Continue Shopping'}
+          🛍️ {t('continueShopping')}
         </button>
       </div>
     )
@@ -560,7 +565,7 @@ export default function CartPage() {
           color: c.textDark,
           marginBottom: isMobile ? '1.5rem' : '2rem'
         }}>
-          {t('cart') || 'Shopping Cart'} ({totalItems} {totalItems === 1 ? 'item' : 'items'})
+          {t('cart')} ({totalItems} {totalItems === 1 ? t('item') : t('items')})
         </h2>
 
         <CartErrorBanner />
@@ -581,10 +586,10 @@ export default function CartPage() {
           }}>
             <div>
               <h3 style={{ margin: '0 0 0.5rem 0', color: '#856404', fontSize: isMobile ? '1rem' : '1.1rem' }}>
-                ⚠️ Pending Payment
+                ⚠️ {t('pendingPayment')}
               </h3>
               <p style={{ margin: 0, color: '#856404', fontSize: isMobile ? '0.9rem' : '1rem' }}>
-                Amount: π {pendingPayment.amount} | ID: {pendingPayment.identifier?.slice(0, 8)}...
+                {t('amount')}: π {pendingPayment.amount} | ID: {pendingPayment.identifier?.slice(0, 8)}...
               </p>
             </div>
             <button
@@ -601,12 +606,12 @@ export default function CartPage() {
                 fontSize: isMobile ? '0.9rem' : '1rem'
               }}
             >
-              {isProcessing ? 'Processing...' : 'Complete Payment'}
+              {isProcessing ? t('processing') + '...' : t('completePayment')}
             </button>
           </div>
         )}
 
-        {/* Cart Items - ENHANCED WITH PRODUCT DETAILS */}
+        {/* Cart Items */}
         {items.length > 0 && (
           <div style={{ marginBottom: '2rem' }}>
             {items.map((item) => {
@@ -683,7 +688,7 @@ export default function CartPage() {
                         fontSize: '0.75rem',
                         textTransform: 'uppercase'
                       }}>
-                        Out of Stock
+                        {t('outOfStock')}
                       </div>
                     )}
                   </div>
@@ -717,7 +722,7 @@ export default function CartPage() {
                           padding: '4px',
                           lineHeight: 1
                         }}
-                        aria-label="Remove item"
+                        aria-label={t('remove')}
                       >
                         ✕
                       </button>
@@ -742,7 +747,7 @@ export default function CartPage() {
                         color: c.textLight, 
                         fontSize: '0.85rem' 
                       }}>
-                        (π {item.price.toFixed(2)} each)
+                        (π {item.price.toFixed(2)} {t('each')})
                       </span>
                     </div>
 
@@ -756,15 +761,15 @@ export default function CartPage() {
                     }}>
                       {isOutOfStock ? (
                         <span style={{ color: c.danger, fontWeight: '600' }}>
-                          ❌ Out of Stock
+                          ❌ {t('outOfStock')}
                         </span>
                       ) : isLowStock ? (
                         <span style={{ color: c.warning, fontWeight: '600' }}>
-                          ⚡ Only {product.stock} left!
+                          ⚡ {t('onlyLeft', { count: product.stock })}
                         </span>
                       ) : (
                         <span style={{ color: c.success, fontWeight: '600' }}>
-                          ✓ In Stock ({product.stock} available)
+                          ✓ {t('inStock', { count: product.stock })}
                         </span>
                       )}
                     </div>
@@ -795,7 +800,7 @@ export default function CartPage() {
                           gap: '4px'
                         }}>
                           🍬 {product.flavors.slice(0, 3).join(', ')}
-                          {product.flavors.length > 3 && ` +${product.flavors.length - 3} more`}
+                          {product.flavors.length > 3 && ` +${product.flavors.length - 3} ${t('more')}`}
                         </span>
                       </div>
                     )}
@@ -812,7 +817,7 @@ export default function CartPage() {
                         color: c.textLight,
                         fontWeight: '600'
                       }}>
-                        Qty:
+                        {t('quantity')}:
                       </span>
                       <div style={{ 
                         display: 'flex', 
@@ -867,7 +872,7 @@ export default function CartPage() {
                             alignItems: 'center',
                             justifyContent: 'center'
                           }}
-                          title={!canIncrease ? `Max ${product?.stock} available` : 'Increase quantity'}
+                          title={!canIncrease ? t('maxAvailable', { count: product?.stock }) : t('increaseQuantity')}
                         >+</button>
                       </div>
                       
@@ -878,7 +883,7 @@ export default function CartPage() {
                           color: c.warning,
                           fontWeight: '600'
                         }}>
-                          Max reached
+                          {t('maxReached')}
                         </span>
                       )}
                     </div>
@@ -911,7 +916,7 @@ export default function CartPage() {
                 color: c.textLight,
                 fontSize: '0.9rem'
               }}>
-                <span>Subtotal ({totalItems} items)</span>
+                <span>{t('subtotal')} ({totalItems} {totalItems === 1 ? t('item') : t('items')})</span>
                 <span>π {totalPrice.toFixed(2)}</span>
               </div>
               <div style={{ 
@@ -921,8 +926,8 @@ export default function CartPage() {
                 color: c.textLight,
                 fontSize: '0.9rem'
               }}>
-                <span>Shipping</span>
-                <span style={{ color: c.success }}>Free</span>
+                <span>{t('shipping')}</span>
+                <span style={{ color: c.success }}>{t('free')}</span>
               </div>
             </div>
 
@@ -936,7 +941,7 @@ export default function CartPage() {
               paddingTop: '1rem',
               borderTop: `2px solid ${c.border}`
             }}>
-              <span>{t('total') || 'Total'}:</span>
+              <span>{t('total')}:</span>
               <span style={{ color: c.secondary }}>
                 π {(pendingPayment ? pendingPayment.amount : totalPrice).toFixed(2)}
               </span>
@@ -969,21 +974,21 @@ export default function CartPage() {
               {isProcessing ? (
                 <>
                   <span>⏳</span>
-                  Processing...
+                  {t('processing')}...
                 </>
               ) : piLoading ? (
-                '⏳ Connecting to Pi...'
+                '⏳ ' + t('connectingToPi') + '...'
               ) : pendingPayment ? (
-                '⚠️ Complete Pending Payment First'
+                '⚠️ ' + t('completePendingFirst')
               ) : Object.keys(stockErrors).length > 0 ? (
-                '❌ Resolve Stock Issues'
+                '❌ ' + t('resolveStockIssues')
               ) : piAuthenticated ? (
                 <>
                   <span style={{ fontSize: '1.4rem' }}>π</span>
-                  {t('checkout') || 'Checkout'} with Pi
+                  {t('checkoutWithPi')}
                 </>
               ) : (
-                '❌ Pi Not Connected'
+                '❌ ' + t('piNotConnected')
               )}
             </button>
             
@@ -1005,7 +1010,7 @@ export default function CartPage() {
                 fontSize: '0.85rem',
                 textAlign: 'center'
               }}>
-                ⚠️ Please adjust quantities before checkout
+                ⚠️ {t('adjustQuantitiesBeforeCheckout')}
               </p>
             )}
           </div>
