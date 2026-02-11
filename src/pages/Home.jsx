@@ -259,48 +259,7 @@ export default function Home() {
             }}
           >
             {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              style={{
-                background: 'rgba(255, 255, 255, 0.2)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                border: `2px solid rgba(255, 255, 255, 0.4)`,
-                borderRadius: '50%',
-                width: isMobile ? '48px' : 'clamp(50px, 12vw, 58px)',
-                height: isMobile ? '48px' : 'clamp(50px, 12vw, 58px)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                fontSize: isMobile ? '1.3rem' : 'clamp(1.4rem, 4vw, 1.6rem)',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                color: '#FFFFFF',
-                boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)'
-              }}
-              onMouseEnter={(e) => {
-                if (windowWidth >= 768) {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'
-                  e.currentTarget.style.transform = 'scale(1.1) rotate(20deg)'
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.3)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (windowWidth >= 768) {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
-                  e.currentTarget.style.transform = 'scale(1) rotate(0deg)'
-                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.2)'
-                }
-              }}
-              onTouchStart={(e) => {
-                e.currentTarget.style.transform = 'scale(0.9)'
-              }}
-              onTouchEnd={(e) => {
-                e.currentTarget.style.transform = 'scale(1)'
-              }}
-            >
-              {theme === 'light' ? '🌙' : '☀️'}
-            </button>
+            
 
             {/* Cart Link */}
             <Link
