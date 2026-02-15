@@ -59,8 +59,8 @@ export default function Home() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, 'products'))
-        const productList = querySnapshot.docs.map(doc => ({
+const querySnapshot = await getDocs(collection(db, 'products_pi')) 
+  const productList = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }))
